@@ -1,6 +1,7 @@
 """Interface do VivaBem com controles básicos de acessibilidade."""
 
 import streamlit as st
+from urllib.parse import urlencode
 
 from llm_provider import generate_response, generate_response_with_sources
 from safety import ASSISTANT_INSTRUCTIONS
@@ -41,6 +42,13 @@ def reset_accessibility_settings():
     st.session_state.font_scale = 100
     st.session_state.line_spacing = 1.6
     st.session_state.reduce_motion = True
+
+
+def build_maps_search_url(search_text: str) -> str:
+    """Cria um link de busca do Google Maps sem exigir uma chave de API Maps."""
+    return "https://www.google.com/maps/search/?" + urlencode(
+        {"api": "1", "query": search_text}
+    )
 
 
 with st.sidebar:
@@ -289,6 +297,107 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+if "local_search_result" not in st.session_state:
+    st.session_state.local_search_result = None
+
+with st.expander("Encontrar atendimento próximo", expanded=False):
+    st.info(
+        "Informe somente cidade e bairro, sem endereço completo. Essa localização "
+        "aproximada será enviada ao Gemini para a pesquisa na web. A busca pode "
+        "consumir sua cota e, conforme seu plano, gerar cobrança."
+    )
+    with st.form("local_health_search"):
+        service_type = st.selectbox(
+            "O que você procura?",
+            [
+                "UBS ou posto de saúde do SUS",
+                "Médico ou clínica",
+                "Outro profissional de saúde",
+            ],
+        )
+        specialty = st.text_input(
+            "Profissão ou especialidade (opcional)",
+            placeholder="Ex.: pediatra, psicólogo, nutricionista",
+        )
+        locality = st.text_input(
+            "Cidade e bairro",
+            placeholder="Ex.: Centro, Campinas - SP",
+        )
+        location_consent = st.checkbox(
+            "Entendo que cidade e bairro serão enviados ao Gemini para esta busca.",
+            key="local_search_consent",
+        )
+        search_submitted = st.form_submit_button(
+            "Buscar sugestões e mapa",
+            use_container_width=True,
+        )
+
+    if search_submitted:
+        if not locality.strip():
+            st.warning("Informe pelo menos a cidade e o bairro para pesquisar.")
+        elif not location_consent:
+            st.warning("Marque a autorização para enviar a localização aproximada.")
+        else:
+            specialty_text = f" Especialidade/profissão: {specialty.strip()}." if specialty.strip() else ""
+            search_query = (
+                f"Pesquise até 3 opções de {service_type} próximas de {locality.strip()}."
+                f"{specialty_text}"
+            )
+            local_instructions = (
+                ASSISTANT_INSTRUCTIONS
+                + "\nVocê está fazendo uma busca local de serviços de saúde. "
+                "Dê preferência a páginas oficiais do SUS, do Ministério da Saúde, "
+                "CNES ou páginas oficiais do próprio estabelecimento/profissional. "
+                "Liste no máximo três opções e informe nome, tipo e endereço apenas "
+                "se esses dados estiverem nas fontes consultadas. Inclua telefone, "
+                "site ou Instagram somente quando a fonte confirmar o dado e a conta "
+                "for claramente oficial; nunca invente nem complete informações. "
+                "Diga quando um dado não foi encontrado e recomende confirmar por "
+                "telefone ou site antes de se deslocar, pois horários e cadastros podem "
+                "mudar. Não classifique qualidade, não diagnostique e não prometa "
+                "disponibilidade de atendimento."
+            )
+            with st.spinner("Pesquisando opções e fontes públicas..."):
+                try:
+                    answer, sources = generate_response_with_sources(
+                        search_query, local_instructions
+                    )
+                except Exception:
+                    st.error(
+                        "Não consegui fazer a busca agora. Confira a conexão, a chave "
+                        "do Gemini e as cotas da API."
+                    )
+                else:
+                    map_query = " ".join(
+                        part for part in [service_type, specialty.strip(), locality.strip()]
+                        if part
+                    )
+                    st.session_state.local_search_result = {
+                        "answer": answer,
+                        "sources": sources,
+                        "maps_url": build_maps_search_url(map_query),
+                    }
+
+    local_result = st.session_state.local_search_result
+    if local_result:
+        st.markdown(local_result["answer"])
+        st.link_button(
+            "Abrir busca desta região no Google Maps",
+            local_result["maps_url"],
+            use_container_width=False,
+        )
+        if local_result["sources"]:
+            with st.expander("Fontes consultadas para estas sugestões"):
+                for source in local_result["sources"]:
+                    st.link_button(
+                        source["title"], source["url"], use_container_width=False
+                    )
+        else:
+            st.warning(
+                "A busca não retornou links verificáveis. Confirme os dados diretamente "
+                "com os serviços antes de ir até eles."
+            )
 
 if not st.session_state.messages:
     st.info("Olá! Você pode perguntar sobre hábitos gerais de prevenção e bem-estar.")
