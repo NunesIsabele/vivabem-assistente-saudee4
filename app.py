@@ -129,6 +129,12 @@ if high_contrast:
     muted_color = "#E2E8F0"
     border_color = "#F4D35E"
     accent = "#F4D35E"
+    sidebar_bg = "#080B10"
+    sidebar_text = "#FFFFFF"
+    sidebar_muted = "#F1F5F9"
+    sidebar_control_bg = "#111820"
+    sidebar_control_text = "#FFFFFF"
+    sidebar_border = "#F4D35E"
 elif theme_is_dark:
     page_bg = "#101925"
     panel_bg = "#1B2938"
@@ -137,6 +143,12 @@ elif theme_is_dark:
     text_color = "#F4F7FB"
     muted_color = "#D0DAE5"
     border_color = "#52677C"
+    sidebar_bg = "#14263D"
+    sidebar_text = "#F8FAFC"
+    sidebar_muted = "#E2E8F0"
+    sidebar_control_bg = "#0B1017"
+    sidebar_control_text = "#F8FAFC"
+    sidebar_border = "#9BAABD"
 else:
     page_bg = "#F7F9FC"
     panel_bg = "#FFFFFF"
@@ -145,6 +157,12 @@ else:
     text_color = "#14263D"
     muted_color = "#43556B"
     border_color = "#C6D1DF"
+    sidebar_bg = "#E8EDF3"
+    sidebar_text = "#14263D"
+    sidebar_muted = "#43556B"
+    sidebar_control_bg = "#FFFFFF"
+    sidebar_control_text = "#14263D"
+    sidebar_border = "#738399"
 
 notice_bg = "#332B12" if theme_is_dark or high_contrast else "#FFF6CC"
 notice_text = "#FFF2B3" if theme_is_dark or high_contrast else "#322800"
@@ -162,6 +180,12 @@ st.markdown(
         --muted-color: {muted_color};
         --border-color: {border_color};
         --accent-color: {accent};
+        --sidebar-bg: {sidebar_bg};
+        --sidebar-text: {sidebar_text};
+        --sidebar-muted: {sidebar_muted};
+        --sidebar-control-bg: {sidebar_control_bg};
+        --sidebar-control-text: {sidebar_control_text};
+        --sidebar-border: {sidebar_border};
         --font-scale: {font_scale};
         --line-spacing: {line_spacing};
     }}
@@ -170,9 +194,41 @@ st.markdown(
         font-size: calc(16px * var(--font-scale));
     }}
     [data-testid="stHeader"] {{ background: var(--page-bg); }}
-    [data-testid="stSidebar"] > div {{ background: #14263D; }}
-    [data-testid="stSidebar"] *, [data-testid="stSidebar"] label {{ color: #FFFFFF !important; }}
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{ line-height: var(--line-spacing) !important; }}
+    [data-testid="stSidebar"] > div {{ background: var(--sidebar-bg); }}
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label,
+    [data-testid="stSidebar"] [data-testid="stCheckbox"] label *,
+    [data-testid="stSidebar"] [data-testid="stSlider"] label,
+    [data-testid="stSidebar"] [data-testid="stSlider"] label *,
+    [data-testid="stSidebar"] button {{
+        color: var(--sidebar-text) !important; opacity: 1 !important;
+    }}
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] * {{
+        display: block !important; visibility: visible !important;
+    }}
+    [data-testid="stSidebar"] [data-testid="stCaptionContainer"] *,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
+        color: var(--sidebar-muted) !important; opacity: 1 !important;
+        line-height: var(--line-spacing) !important;
+    }}
+    [data-testid="stSidebar"] [data-baseweb="select"] > div {{
+        background: var(--sidebar-control-bg) !important;
+        border-color: var(--sidebar-border) !important;
+    }}
+    [data-testid="stSidebar"] [data-baseweb="select"] *,
+    [data-testid="stSidebar"] [data-baseweb="select"] input {{
+        color: var(--sidebar-control-text) !important; opacity: 1 !important;
+    }}
+    [data-testid="stSidebar"] button {{
+        border: 1px solid var(--sidebar-border) !important;
+        border-radius: 9px !important;
+        background: var(--sidebar-control-bg) !important;
+    }}
+    [data-testid="stSidebar"] button:hover {{ border-color: var(--accent-color) !important; }}
+    ::selection {{ color: #FFFFFF; background: #205A9C; }}
     [data-testid="stSidebar"] [data-baseweb="select"] > div,
     [data-testid="stSidebar"] [data-baseweb="slider"] {{ border-color: #9BAABD !important; }}
     [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
