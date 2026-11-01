@@ -1,7 +1,6 @@
 """Interface do VivaBem com controles básicos de acessibilidade."""
 
 import streamlit as st
-from urllib.parse import urlencode
 
 from llm_provider import generate_response, generate_response_with_sources
 from safety import ASSISTANT_INSTRUCTIONS
@@ -22,7 +21,11 @@ PALETTE = {
     "Laranja": "#9C4B10",
 }
 
-OFFICIAL_REFERENCES = [
+HEALTH_REFERENCES = [
+    (
+        "Biblioteca Virtual em Saúde — Ministério da Saúde",
+        "https://bvsms.saude.gov.br/",
+    ),
     (
         "Guia de Atividade Física para a População Brasileira — Ministério da Saúde",
         "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2021/guia-de-atividade-fisica-para-a-populacao-brasileira.pdf/view",
@@ -31,7 +34,35 @@ OFFICIAL_REFERENCES = [
         "Guia Alimentar para a População Brasileira — Ministério da Saúde",
         "https://www.gov.br/saude/pt-br/assuntos/saude-brasil/publicacoes-para-promocao-a-saude/guia_alimentar_populacao_brasileira_2ed.pdf/@@download/file",
     ),
+    (
+        "Tópicos de saúde — Organização Mundial da Saúde (OMS)",
+        "https://www.who.int/pt/health-topics",
+    ),
+    (
+        "Tópicos de saúde — Organização Pan-Americana da Saúde (OPAS)",
+        "https://www.paho.org/pt/topicos",
+    ),
+    (
+        "Informação em Saúde — Fiocruz/Icict",
+        "https://www.icict.fiocruz.br/informacao-em-saude",
+    ),
+    (
+        "Recomendações para prevenir o câncer — INCA (2026)",
+        "https://ninho.inca.gov.br/jspui/handle/123456789/17929?locale=pt_BR",
+    ),
 ]
+
+SEARCH_SOURCE_GUIDANCE = (
+    "Ao pesquisar informações de saúde, use fontes variadas e confiáveis. "
+    "Priorize, conforme o tema, o Ministério da Saúde e o SUS, a Biblioteca Virtual "
+    "em Saúde, Fiocruz, INCA, Anvisa, OPAS/OMS, universidades e artigos científicos "
+    "de revisão ou diretrizes de sociedades profissionais reconhecidas. Procure "
+    "informações recentes e específicas para o Brasil quando isso for importante. "
+    "Evite blogs, publicidade, fóruns e redes sociais como base principal. "
+    "Inclua os links das fontes consultadas e diferencie o que elas dizem de uma "
+    "explicação resumida. Se as fontes forem insuficientes, antigas ou divergentes, "
+    "diga isso claramente. A busca na web não substitui avaliação profissional."
+)
 
 
 def reset_accessibility_settings():
@@ -42,13 +73,6 @@ def reset_accessibility_settings():
     st.session_state.font_scale = 100
     st.session_state.line_spacing = 1.6
     st.session_state.reduce_motion = True
-
-
-def build_maps_search_url(search_text: str) -> str:
-    """Cria um link de busca do Google Maps sem exigir uma chave de API Maps."""
-    return "https://www.google.com/maps/search/?" + urlencode(
-        {"api": "1", "query": search_text}
-    )
 
 
 with st.sidebar:
@@ -106,12 +130,12 @@ with st.sidebar:
             "Busca na web ativada: cada pergunta pode usar recursos adicionais da API. "
             "Confira as cotas e os custos da sua conta Google AI Studio."
         )
-    with st.expander("Materiais oficiais de referência"):
+    with st.expander("Fontes confiáveis de saúde"):
         st.caption(
-            "Guias públicos do Ministério da Saúde. Eles são referências gerais; "
-            "nem toda resposta do Gemini é baseada nesses materiais."
+            "A busca pode usar estas referências e também localizar outras fontes confiáveis. "
+            "Nem toda resposta necessariamente usa esta lista."
         )
-        for title, url in OFFICIAL_REFERENCES:
+        for title, url in HEALTH_REFERENCES:
             st.markdown(f"- [{title}]({url})")
     if st.button("Limpar conversa", use_container_width=True):
         st.session_state.messages = []
@@ -174,7 +198,12 @@ else:
 
 notice_bg = "#332B12" if theme_is_dark or high_contrast else "#FFF6CC"
 notice_text = "#FFF2B3" if theme_is_dark or high_contrast else "#322800"
-motion_css = "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }" if reduce_motion else ""
+motion_css = (
+    "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; "
+    "scroll-behavior: auto !important; }"
+    if reduce_motion
+    else ""
+)
 
 st.markdown(
     f"""
@@ -298,107 +327,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-if "local_search_result" not in st.session_state:
-    st.session_state.local_search_result = None
-
-with st.expander("Encontrar atendimento próximo", expanded=False):
-    st.info(
-        "Informe somente cidade e bairro, sem endereço completo. Essa localização "
-        "aproximada será enviada ao Gemini para a pesquisa na web. A busca pode "
-        "consumir sua cota e, conforme seu plano, gerar cobrança."
-    )
-    with st.form("local_health_search"):
-        service_type = st.selectbox(
-            "O que você procura?",
-            [
-                "UBS ou posto de saúde do SUS",
-                "Médico ou clínica",
-                "Outro profissional de saúde",
-            ],
-        )
-        specialty = st.text_input(
-            "Profissão ou especialidade (opcional)",
-            placeholder="Ex.: pediatra, psicólogo, nutricionista",
-        )
-        locality = st.text_input(
-            "Cidade e bairro",
-            placeholder="Ex.: Centro, Campinas - SP",
-        )
-        location_consent = st.checkbox(
-            "Entendo que cidade e bairro serão enviados ao Gemini para esta busca.",
-            key="local_search_consent",
-        )
-        search_submitted = st.form_submit_button(
-            "Buscar sugestões e mapa",
-            use_container_width=True,
-        )
-
-    if search_submitted:
-        if not locality.strip():
-            st.warning("Informe pelo menos a cidade e o bairro para pesquisar.")
-        elif not location_consent:
-            st.warning("Marque a autorização para enviar a localização aproximada.")
-        else:
-            specialty_text = f" Especialidade/profissão: {specialty.strip()}." if specialty.strip() else ""
-            search_query = (
-                f"Pesquise até 3 opções de {service_type} próximas de {locality.strip()}."
-                f"{specialty_text}"
-            )
-            local_instructions = (
-                ASSISTANT_INSTRUCTIONS
-                + "\nVocê está fazendo uma busca local de serviços de saúde. "
-                "Dê preferência a páginas oficiais do SUS, do Ministério da Saúde, "
-                "CNES ou páginas oficiais do próprio estabelecimento/profissional. "
-                "Liste no máximo três opções e informe nome, tipo e endereço apenas "
-                "se esses dados estiverem nas fontes consultadas. Inclua telefone, "
-                "site ou Instagram somente quando a fonte confirmar o dado e a conta "
-                "for claramente oficial; nunca invente nem complete informações. "
-                "Diga quando um dado não foi encontrado e recomende confirmar por "
-                "telefone ou site antes de se deslocar, pois horários e cadastros podem "
-                "mudar. Não classifique qualidade, não diagnostique e não prometa "
-                "disponibilidade de atendimento."
-            )
-            with st.spinner("Pesquisando opções e fontes públicas..."):
-                try:
-                    answer, sources = generate_response_with_sources(
-                        search_query, local_instructions
-                    )
-                except Exception:
-                    st.error(
-                        "Não consegui fazer a busca agora. Confira a conexão, a chave "
-                        "do Gemini e as cotas da API."
-                    )
-                else:
-                    map_query = " ".join(
-                        part for part in [service_type, specialty.strip(), locality.strip()]
-                        if part
-                    )
-                    st.session_state.local_search_result = {
-                        "answer": answer,
-                        "sources": sources,
-                        "maps_url": build_maps_search_url(map_query),
-                    }
-
-    local_result = st.session_state.local_search_result
-    if local_result:
-        st.markdown(local_result["answer"])
-        st.link_button(
-            "Abrir busca desta região no Google Maps",
-            local_result["maps_url"],
-            use_container_width=False,
-        )
-        if local_result["sources"]:
-            with st.expander("Fontes consultadas para estas sugestões"):
-                for source in local_result["sources"]:
-                    st.link_button(
-                        source["title"], source["url"], use_container_width=False
-                    )
-        else:
-            st.warning(
-                "A busca não retornou links verificáveis. Confirme os dados diretamente "
-                "com os serviços antes de ir até eles."
-            )
-
 if not st.session_state.messages:
     st.info("Olá! Você pode perguntar sobre hábitos gerais de prevenção e bem-estar.")
 
@@ -411,7 +339,8 @@ for message in st.session_state.messages:
                 with st.expander("Fontes consultadas nesta resposta"):
                     for source in message["sources"]:
                         st.link_button(
-                            source["title"], source["url"],
+                            source["title"],
+                            source["url"],
                             use_container_width=False,
                         )
             else:
@@ -435,9 +364,9 @@ if prompt:
                 if search_requested:
                     source_instructions = (
                         ASSISTANT_INSTRUCTIONS
-                        + "\nAo pesquisar, dê preferência a fontes oficiais de saúde "
-                        "e não apresente uma página encontrada como prova de um diagnóstico. "
-                        "Deixe claro quando a busca não trouxer evidência suficiente."
+                        + "\n"
+                        + SEARCH_SOURCE_GUIDANCE
+                        + "\nNão apresente páginas encontradas como prova de diagnóstico."
                     )
                     answer, sources = generate_response_with_sources(
                         prompt, source_instructions
@@ -456,7 +385,8 @@ if prompt:
                     with st.expander("Fontes consultadas nesta resposta"):
                         for source in sources:
                             st.link_button(
-                                source["title"], source["url"],
+                                source["title"],
+                                source["url"],
                                 use_container_width=False,
                             )
                 elif search_requested:
@@ -474,3 +404,4 @@ if prompt:
                         "search_requested": search_requested,
                     }
                 )
+            
