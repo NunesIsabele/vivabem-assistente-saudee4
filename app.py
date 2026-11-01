@@ -1,5 +1,6 @@
 """Interface do VivaBem com controles básicos de acessibilidade."""
 
+import logging
 import streamlit as st
 
 from llm_provider import generate_response, generate_response_with_sources
@@ -375,6 +376,7 @@ if prompt:
                     answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
                     sources = []
             except Exception:
+                logging.exception("Falha ao consultar o Gemini")
                 st.error(
                     "Não consegui consultar o Gemini. Confira se a chave está "
                     "configurada e tente novamente."
@@ -404,4 +406,3 @@ if prompt:
                         "search_requested": search_requested,
                     }
                 )
-            
