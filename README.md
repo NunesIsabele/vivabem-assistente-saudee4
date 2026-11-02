@@ -10,7 +10,6 @@ Protótipo em Python 3.13.14 com uma interface de conversa feita em Streamlit e 
 - `safety.py`: define o escopo seguro das respostas.
 - `.env`: exemplo da configuração local, sem chave real.
 - `.gitignore`: exclui configurações locais e chaves do controle de versão.
-- `.streamlit/config.toml`: configura a aparência inicial da interface.
 - `requirements.txt`: dependência da API Gemini.
 
 ## Acessibilidade da interface
@@ -28,7 +27,7 @@ O `app.py` pode ser publicado a partir de um repositório GitHub. Configure `GEM
 ## Configuração
 
 1. Instale as dependências com `python -m pip install -r requirements.txt`.
-2. Crie um arquivo `.env` nesta pasta, usando `.env` como modelo, e coloque nele `GEMINI_API_KEY=sua_chave`.
+2. Crie um arquivo `.env` nesta pasta e coloque nele `GEMINI_API_KEY=sua_chave`.
 3. Inicie a interface com `python -m streamlit run app.py`.
 
 O programa usa `gemini-3.5-flash-lite` por padrão. O acesso gratuito tem limites e depende da elegibilidade da conta. Não use dados reais ou identificáveis de saúde; use apenas exemplos fictícios.

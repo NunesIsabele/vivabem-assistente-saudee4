@@ -491,7 +491,13 @@ st.markdown(
         outline: 3px solid var(--accent-color) !important;
         outline-offset: 2px !important;
     }}
-    .block-container {{ max-width: 900px; padding-top: 1.5rem; }}
+    .block-container {{
+        width: 100%; max-width: 900px; padding-top: 1.5rem;
+        padding-left: clamp(1rem, 4vw, 2rem);
+        padding-right: clamp(1rem, 4vw, 2rem);
+        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+        box-sizing: border-box;
+    }}
     .hero {{
         padding: 1.5rem 1.8rem;
         border-radius: 18px;
@@ -513,6 +519,56 @@ st.markdown(
         margin-bottom: 1rem;
     }}
     .notice * {{ color: {notice_text} !important; }}
+    /* Ajustes para celular: reduz margens e impede que conteúdo ultrapasse a tela. */
+    @media (max-width: 768px) {{
+        .block-container {{
+            max-width: 100% !important;
+            padding-top: 1rem !important;
+            padding-left: .85rem !important;
+            padding-right: .85rem !important;
+            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important;
+        }}
+        [data-testid="stMain"] {{ min-width: 0 !important; }}
+        [data-testid="stChatMessage"] {{
+            min-width: 0 !important;
+            padding: .6rem .7rem !important;
+            gap: .45rem !important;
+        }}
+        [data-testid="stChatMessageContent"],
+        [data-testid="stMarkdownContainer"] {{
+            min-width: 0 !important;
+            max-width: 100% !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+        }}
+        [data-testid="stMarkdownContainer"] table {{
+            display: block;
+            max-width: 100%;
+            overflow-x: auto;
+        }}
+        .hero {{ padding: 1rem 1.05rem !important; border-radius: 14px !important; }}
+        .hero h1 {{ font-size: calc(1.7rem * var(--font-scale)) !important; }}
+        .hero p {{ font-size: calc(.95rem * var(--font-scale)) !important; }}
+        .notice {{ padding: .75rem .8rem !important; }}
+        [data-testid="stChatInput"] {{
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box !important;
+        }}
+        [data-testid="stSidebarContent"] {{
+            max-height: 100dvh !important;
+            overflow-y: auto !important;
+        }}
+        [data-testid="stSidebar"] [data-testid="stWidgetLabel"] {{
+            white-space: normal !important;
+            overflow-wrap: anywhere !important;
+        }}
+    }}
+    @media (max-width: 420px) {{
+        .block-container {{ padding-left: .65rem !important; padding-right: .65rem !important; }}
+        [data-testid="stChatMessage"] {{ padding: .5rem .55rem !important; }}
+        .hero h1 {{ font-size: calc(1.5rem * var(--font-scale)) !important; }}
+    }}
     {motion_css}
     </style>
     <div class="hero">
