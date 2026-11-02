@@ -1,9 +1,10 @@
-"""Interface do VivaBem com controles básicos de acessibilidade."""
+"""Interface do VivaBem com acessibilidade e sem busca automática na web."""
 
 import logging
+
 import streamlit as st
 
-from llm_provider import generate_response, generate_response_with_sources
+from llm_provider import generate_response
 from safety import ASSISTANT_INSTRUCTIONS
 
 
@@ -13,13 +14,23 @@ st.set_page_config(
     layout="centered",
 )
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-PALETTE = {
-    "Amarelo": "#F4D35E",
+PALETTE_LIGHT = {
+    "Amarelo": "#806000",
     "Verde": "#1F6D49",
     "Azul": "#205A9C",
     "Roxo": "#5D3FA1",
     "Laranja": "#9C4B10",
+}
+
+PALETTE_DARK = {
+    "Amarelo": "#F4D35E",
+    "Verde": "#65C995",
+    "Azul": "#80B5FF",
+    "Roxo": "#BEA2FF",
+    "Laranja": "#FFAE70",
 }
 
 HEALTH_REFERENCES = [
@@ -48,22 +59,10 @@ HEALTH_REFERENCES = [
         "https://www.icict.fiocruz.br/informacao-em-saude",
     ),
     (
-        "Recomendações para prevenir o câncer — INCA (2026)",
+        "Recomendações para prevenir o câncer — INCA",
         "https://ninho.inca.gov.br/jspui/handle/123456789/17929?locale=pt_BR",
     ),
 ]
-
-SEARCH_SOURCE_GUIDANCE = (
-    "Ao pesquisar informações de saúde, use fontes variadas e confiáveis. "
-    "Priorize, conforme o tema, o Ministério da Saúde e o SUS, a Biblioteca Virtual "
-    "em Saúde, Fiocruz, INCA, Anvisa, OPAS/OMS, universidades e artigos científicos "
-    "de revisão ou diretrizes de sociedades profissionais reconhecidas. Procure "
-    "informações recentes e específicas para o Brasil quando isso for importante. "
-    "Evite blogs, publicidade, fóruns e redes sociais como base principal. "
-    "Inclua os links das fontes consultadas e diferencie o que elas dizem de uma "
-    "explicação resumida. Se as fontes forem insuficientes, antigas ou divergentes, "
-    "diga isso claramente. A busca na web não substitui avaliação profissional."
-)
 
 
 def reset_accessibility_settings():
@@ -81,7 +80,7 @@ with st.sidebar:
     st.caption("Personalize a aparência e a leitura do VivaBem.")
 
     st.selectbox("Tema", ["Claro", "Escuro"], key="theme_mode")
-    st.selectbox("Cor de destaque", list(PALETTE), key="accent_color")
+    st.selectbox("Cor de destaque", list(PALETTE_LIGHT), key="accent_color")
     st.checkbox("Ativar alto contraste", key="high_contrast")
     st.slider(
         "Tamanho do texto",
@@ -117,88 +116,74 @@ with st.sidebar:
         "Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos. "
         "Em uma emergência, procure imediatamente um serviço de saúde local."
     )
-    st.checkbox(
-        "Pesquisar fontes atuais na web",
-        key="web_grounding",
-        help=(
-            "Quando ativada, permite que o Gemini pesquise a web e retorne links "
-            "das fontes encontradas. A busca pode consumir cotas e gerar cobrança "
-            "conforme os limites e as condições da API do Google."
-        ),
-    )
-    if st.session_state.get("web_grounding", False):
-        st.warning(
-            "Busca na web ativada: cada pergunta pode usar recursos adicionais da API. "
-            "Confira as cotas e os custos da sua conta Google AI Studio."
-        )
     with st.expander("Fontes confiáveis de saúde"):
         st.caption(
-            "A busca pode usar estas referências e também localizar outras fontes confiáveis. "
-            "Nem toda resposta necessariamente usa esta lista."
+            "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
+            "as respostas do Gemini podem não usar estes materiais."
         )
         for title, url in HEALTH_REFERENCES:
             st.markdown(f"- [{title}]({url})")
+
     if st.button("Limpar conversa", use_container_width=True):
         st.session_state.messages = []
         st.rerun()
 
-
-if "messages" not in st.session_state:
-    st.session_state.messages = []
 
 theme_is_dark = st.session_state.get("theme_mode", "Claro") == "Escuro"
 high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
 reduce_motion = st.session_state.get("reduce_motion", True)
-accent = PALETTE.get(st.session_state.get("accent_color", "Amarelo"), "#F4D35E")
+accent_palette = PALETTE_DARK if theme_is_dark else PALETTE_LIGHT
+accent = accent_palette.get(st.session_state.get("accent_color", "Amarelo"), "#806000")
 
 if high_contrast:
-    page_bg = "#080B10"
-    panel_bg = "#111820"
-    message_bg = "#17212B"
-    user_bg = "#202B36"
+    page_bg = "#000000"
+    panel_bg = "#0B0B0B"
+    message_bg = "#111111"
     text_color = "#FFFFFF"
-    muted_color = "#E2E8F0"
-    border_color = "#F4D35E"
-    accent = "#F4D35E"
-    sidebar_bg = "#080B10"
+    muted_color = "#FFFFFF"
+    border_color = "#FFFFFF"
+    accent = "#FFFF00"
+    sidebar_bg = "#000000"
     sidebar_text = "#FFFFFF"
-    sidebar_muted = "#F1F5F9"
-    sidebar_control_bg = "#111820"
+    sidebar_muted = "#FFFFFF"
+    sidebar_control_bg = "#0B0B0B"
     sidebar_control_text = "#FFFFFF"
-    sidebar_border = "#F4D35E"
+    sidebar_border = "#FFFFFF"
+    notice_bg = "#000000"
+    notice_text = "#FFFF00"
 elif theme_is_dark:
     page_bg = "#101925"
     panel_bg = "#1B2938"
     message_bg = "#1B2938"
-    user_bg = "#26384D"
     text_color = "#F4F7FB"
     muted_color = "#D0DAE5"
-    border_color = "#52677C"
+    border_color = "#71849A"
     sidebar_bg = "#14263D"
-    sidebar_text = "#F8FAFC"
-    sidebar_muted = "#E2E8F0"
+    sidebar_text = "#FFFFFF"
+    sidebar_muted = "#E8EEF5"
     sidebar_control_bg = "#0B1017"
-    sidebar_control_text = "#F8FAFC"
-    sidebar_border = "#9BAABD"
+    sidebar_control_text = "#FFFFFF"
+    sidebar_border = "#AAB8C8"
+    notice_bg = "#332B12"
+    notice_text = "#FFF2B3"
 else:
     page_bg = "#F7F9FC"
     panel_bg = "#FFFFFF"
     message_bg = "#E9EEF5"
-    user_bg = "#DCE9F8"
     text_color = "#14263D"
-    muted_color = "#43556B"
-    border_color = "#C6D1DF"
+    muted_color = "#35485E"
+    border_color = "#8796A8"
     sidebar_bg = "#E8EDF3"
     sidebar_text = "#14263D"
-    sidebar_muted = "#43556B"
+    sidebar_muted = "#35485E"
     sidebar_control_bg = "#FFFFFF"
     sidebar_control_text = "#14263D"
-    sidebar_border = "#738399"
+    sidebar_border = "#65778C"
+    notice_bg = "#FFF6CC"
+    notice_text = "#322800"
 
-notice_bg = "#332B12" if theme_is_dark or high_contrast else "#FFF6CC"
-notice_text = "#FFF2B3" if theme_is_dark or high_contrast else "#322800"
 motion_css = (
     "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; "
     "scroll-behavior: auto !important; }"
@@ -213,7 +198,6 @@ st.markdown(
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
-        --user-bg: {user_bg};
         --text-color: {text_color};
         --muted-color: {muted_color};
         --border-color: {border_color};
@@ -228,7 +212,8 @@ st.markdown(
         --line-spacing: {line_spacing};
     }}
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        background: var(--page-bg); color: var(--text-color);
+        background: var(--page-bg);
+        color: var(--text-color);
         font-size: calc(16px * var(--font-scale));
     }}
     [data-testid="stHeader"] {{ background: var(--page-bg); }}
@@ -239,36 +224,34 @@ st.markdown(
     [data-testid="stSidebar"] [data-testid="stCheckbox"] label,
     [data-testid="stSidebar"] [data-testid="stCheckbox"] label *,
     [data-testid="stSidebar"] [data-testid="stSlider"] label,
-    [data-testid="stSidebar"] [data-testid="stSlider"] label *,
-    [data-testid="stSidebar"] button {{
-        color: var(--sidebar-text) !important; opacity: 1 !important;
-    }}
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] * {{
-        display: block !important; visibility: visible !important;
+    [data-testid="stSidebar"] [data-testid="stSlider"] label * {{
+        color: var(--sidebar-text) !important;
+        opacity: 1 !important;
     }}
     [data-testid="stSidebar"] [data-testid="stCaptionContainer"] *,
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
-        color: var(--sidebar-muted) !important; opacity: 1 !important;
+        color: var(--sidebar-muted) !important;
+        opacity: 1 !important;
         line-height: var(--line-spacing) !important;
     }}
     [data-testid="stSidebar"] [data-baseweb="select"] > div {{
         background: var(--sidebar-control-bg) !important;
-        border-color: var(--sidebar-border) !important;
+        border: 1px solid var(--sidebar-border) !important;
     }}
     [data-testid="stSidebar"] [data-baseweb="select"] *,
     [data-testid="stSidebar"] [data-baseweb="select"] input {{
-        color: var(--sidebar-control-text) !important; opacity: 1 !important;
+        color: var(--sidebar-control-text) !important;
+        opacity: 1 !important;
     }}
     [data-testid="stSidebar"] button {{
+        color: var(--sidebar-control-text) !important;
+        background: var(--sidebar-control-bg) !important;
         border: 1px solid var(--sidebar-border) !important;
         border-radius: 9px !important;
-        background: var(--sidebar-control-bg) !important;
+        opacity: 1 !important;
     }}
     [data-testid="stSidebar"] button:hover {{ border-color: var(--accent-color) !important; }}
-    ::selection {{ color: #FFFFFF; background: #205A9C; }}
-    [data-testid="stSidebar"] [data-baseweb="select"] > div,
-    [data-testid="stSidebar"] [data-baseweb="slider"] {{ border-color: #9BAABD !important; }}
+    [data-testid="stSidebar"] [data-baseweb="slider"] {{ color: var(--accent-color) !important; }}
     [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
     [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] strong,
     [data-testid="stChatMessageContent"], [data-testid="stChatMessageContent"] *,
@@ -277,40 +260,63 @@ st.markdown(
         line-height: var(--line-spacing) !important;
         font-size: calc(1rem * var(--font-scale)) !important;
     }}
-    [data-testid="stChatMessage"] {{
-        background: var(--message-bg); border: 1px solid var(--border-color);
-        border-radius: 14px; padding: .7rem .9rem;
+    [data-testid="stMarkdownContainer"] a {{
+        color: var(--accent-color) !important;
+        text-decoration: underline !important;
     }}
-    [data-testid="stChatInput"] textarea, [data-testid="stTextInput"] input {{
-        color: var(--text-color) !important; background: var(--panel-bg) !important;
+    [data-testid="stAlert"] {{
+        background: var(--message-bg) !important;
+        border: 1px solid var(--border-color) !important;
+    }}
+    [data-testid="stChatMessage"] {{
+        background: var(--message-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 14px;
+        padding: .7rem .9rem;
+    }}
+    [data-testid="stChatInput"] textarea {{
+        color: var(--text-color) !important;
+        background: var(--panel-bg) !important;
         border-color: var(--border-color) !important;
         font-size: calc(1rem * var(--font-scale)) !important;
     }}
     [data-testid="stChatInput"] textarea::placeholder {{ color: var(--muted-color) !important; }}
     [data-testid="stChatInput"] > div, [data-testid="stChatInput"] {{
-        background: var(--panel-bg) !important; border-color: var(--border-color) !important;
+        background: var(--panel-bg) !important;
+        border-color: var(--border-color) !important;
     }}
-    [data-testid="stSidebar"] button {{
-        border: 1px solid #DCE5EF !important; border-radius: 9px !important;
-        color: #FFFFFF !important; background: #14263D !important;
+    [data-baseweb="popover"] [role="listbox"],
+    [data-baseweb="popover"] [role="option"] {{
+        color: var(--text-color) !important;
+        background: var(--panel-bg) !important;
     }}
-    [data-testid="stSidebar"] button:hover {{ border-color: var(--accent-color) !important; }}
-    [data-testid="stSidebar"] input:focus, [data-testid="stSidebar"] button:focus,
+    [data-testid="stSidebar"] button:focus,
+    [data-testid="stSidebar"] input:focus,
     [data-testid="stSidebar"] [role="combobox"]:focus,
     [data-testid="stChatInput"] textarea:focus {{
-        outline: 3px solid var(--accent-color) !important; outline-offset: 2px !important;
+        outline: 3px solid var(--accent-color) !important;
+        outline-offset: 2px !important;
     }}
     .block-container {{ max-width: 900px; padding-top: 1.5rem; }}
     .hero {{
-        padding: 1.5rem 1.8rem; border-radius: 18px; color: var(--text-color);
-        background: var(--panel-bg); border: 2px solid var(--accent-color); margin-bottom: 1rem;
+        padding: 1.5rem 1.8rem;
+        border-radius: 18px;
+        color: var(--text-color);
+        background: var(--panel-bg);
+        border: 2px solid var(--accent-color);
+        margin-bottom: 1rem;
     }}
     .hero h1 {{ margin: 0; font-size: calc(2rem * var(--font-scale)); color: var(--text-color); }}
     .hero p {{ margin: .5rem 0 0; color: var(--muted-color); font-size: calc(1rem * var(--font-scale)); }}
     .notice {{
-        padding: .9rem 1rem; border-radius: 12px; background: {notice_bg};
-        border: 2px solid var(--accent-color); color: {notice_text};
-        font-size: calc(.95rem * var(--font-scale)); line-height: var(--line-spacing); margin-bottom: 1rem;
+        padding: .9rem 1rem;
+        border-radius: 12px;
+        background: {notice_bg};
+        border: 2px solid var(--accent-color);
+        color: {notice_text};
+        font-size: calc(.95rem * var(--font-scale));
+        line-height: var(--line-spacing);
+        margin-bottom: 1rem;
     }}
     .notice * {{ color: {notice_text} !important; }}
     {motion_css}
@@ -335,22 +341,8 @@ for message in st.session_state.messages:
     avatar = "🙂" if message["role"] == "user" else "🌿"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
-        if message.get("search_requested"):
-            if message.get("sources"):
-                with st.expander("Fontes consultadas nesta resposta"):
-                    for source in message["sources"]:
-                        st.link_button(
-                            source["title"],
-                            source["url"],
-                            use_container_width=False,
-                        )
-            else:
-                st.info(
-                    "A busca não retornou links de fontes para esta resposta. "
-                    "Considere-a sem referências verificáveis."
-                )
-        elif message["role"] == "assistant":
-            st.caption("Esta resposta foi gerada sem busca atual na web.")
+        if message["role"] == "assistant":
+            st.caption("Resposta gerada pelo Gemini, sem pesquisa automática na web.")
 
 prompt = st.chat_input("Escreva uma pergunta geral...")
 if prompt:
@@ -361,20 +353,7 @@ if prompt:
     with st.chat_message("assistant", avatar="🌿"):
         with st.spinner("Preparando uma resposta..."):
             try:
-                search_requested = st.session_state.get("web_grounding", False)
-                if search_requested:
-                    source_instructions = (
-                        ASSISTANT_INSTRUCTIONS
-                        + "\n"
-                        + SEARCH_SOURCE_GUIDANCE
-                        + "\nNão apresente páginas encontradas como prova de diagnóstico."
-                    )
-                    answer, sources = generate_response_with_sources(
-                        prompt, source_instructions
-                    )
-                else:
-                    answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
-                    sources = []
+                answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
             except Exception:
                 logging.exception("Falha ao consultar o Gemini")
                 st.error(
@@ -383,26 +362,7 @@ if prompt:
                 )
             else:
                 st.markdown(answer)
-                if search_requested and sources:
-                    with st.expander("Fontes consultadas nesta resposta"):
-                        for source in sources:
-                            st.link_button(
-                                source["title"],
-                                source["url"],
-                                use_container_width=False,
-                            )
-                elif search_requested:
-                    st.info(
-                        "A busca não retornou links de fontes para esta resposta. "
-                        "Considere-a sem referências verificáveis."
-                    )
-                else:
-                    st.caption("Esta resposta foi gerada sem busca atual na web.")
+                st.caption("Resposta gerada pelo Gemini, sem pesquisa automática na web.")
                 st.session_state.messages.append(
-                    {
-                        "role": "assistant",
-                        "content": answer,
-                        "sources": sources,
-                        "search_requested": search_requested,
-                    }
+                    {"role": "assistant", "content": answer}
                 )
