@@ -220,16 +220,6 @@ def reset_accessibility_settings():
 with st.sidebar:
     st.markdown("## Acessibilidade")
     st.caption("Personalize a aparência e a leitura do VivaBem.")
-    st.selectbox(
-        "Formato da tela",
-        ["Automático", "Celular", "Computador"],
-        key="device_mode",
-        help=(
-            "Automático se adapta à largura da janela. Celular usa uma composição "
-            "mais compacta. Computador usa mais espaço quando a tela é larga."
-        ),
-    )
-
     st.selectbox("Tema", ["Claro", "Escuro"], key="theme_mode")
     st.selectbox("Cor de destaque", list(PALETTE_LIGHT), key="accent_color")
     st.checkbox("Ativar alto contraste", key="high_contrast")
@@ -331,6 +321,17 @@ with st.sidebar:
             st.session_state.messages = []
             st.rerun()
 
+
+st.selectbox(
+    "Formato da tela",
+    ["Automático", "Celular", "Computador"],
+    key="device_mode",
+    help=(
+        "Automático se adapta à largura da janela. Celular usa uma composição "
+        "mais compacta. Computador usa mais espaço quando a tela é larga."
+    ),
+)
+st.caption("Você pode mudar esta opção a qualquer momento.")
 
 theme_is_dark = st.session_state.get("theme_mode", "Claro") == "Escuro"
 high_contrast = st.session_state.get("high_contrast", False)
