@@ -220,6 +220,15 @@ def reset_accessibility_settings():
 with st.sidebar:
     st.markdown("## Acessibilidade")
     st.caption("Personalize a aparência e a leitura do VivaBem.")
+    st.selectbox(
+        "Formato da tela",
+        ["Automático", "Celular", "Computador"],
+        key="device_mode",
+        help=(
+            "Automático se adapta à largura da janela. Celular usa uma composição "
+            "mais compacta. Computador usa mais espaço quando a tela é larga."
+        ),
+    )
 
     st.selectbox("Tema", ["Claro", "Escuro"], key="theme_mode")
     st.selectbox("Cor de destaque", list(PALETTE_LIGHT), key="accent_color")
@@ -384,6 +393,33 @@ motion_css = (
     if reduce_motion
     else ""
 )
+
+device_mode = st.session_state.get("device_mode", "Automático")
+if device_mode == "Celular":
+    device_css = """
+    .block-container { max-width: 100% !important; padding: 1rem .75rem 6rem !important; }
+    [data-testid="stMain"] { min-width: 0 !important; }
+    [data-testid="stChatMessage"] { min-width: 0 !important; padding: .55rem .65rem !important; }
+    [data-testid="stChatMessageContent"], [data-testid="stMarkdownContainer"] {
+        min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important;
+    }
+    .hero { padding: .9rem 1rem !important; border-radius: 14px !important; }
+    .hero h1 { font-size: calc(1.6rem * var(--font-scale)) !important; }
+    .hero p { font-size: calc(.95rem * var(--font-scale)) !important; }
+    .notice { padding: .7rem .8rem !important; }
+    [data-testid="stChatInput"] { width: 100% !important; max-width: 100% !important; }
+    [data-testid="stSidebarContent"] { max-height: 100dvh !important; overflow-y: auto !important; }
+    """
+elif device_mode == "Computador":
+    device_css = """
+    @media (min-width: 769px) {
+        .block-container { max-width: 1180px !important; padding-left: 2rem !important; padding-right: 2rem !important; }
+        .hero { padding: 1.8rem 2rem !important; }
+        [data-testid="stChatMessage"] { padding: .9rem 1.1rem !important; }
+    }
+    """
+else:
+    device_css = ""
 
 st.markdown(
     f"""
@@ -569,6 +605,7 @@ st.markdown(
         [data-testid="stChatMessage"] {{ padding: .5rem .55rem !important; }}
         .hero h1 {{ font-size: calc(1.5rem * var(--font-scale)) !important; }}
     }}
+    {device_css}
     {motion_css}
     </style>
     <div class="hero">
