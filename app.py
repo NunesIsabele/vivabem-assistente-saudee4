@@ -362,7 +362,6 @@ if prompt:
                 )
             else:
                 st.markdown(answer)
-                st.caption("Resposta gerada pelo Gemini, sem pesquisa automática na web.")
                 st.session_state.messages.append(
                     {"role": "assistant", "content": answer}
                 )
