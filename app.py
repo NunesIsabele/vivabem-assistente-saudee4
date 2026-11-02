@@ -1,6 +1,9 @@
 """Interface do VivaBem com acessibilidade e sem busca automática na web."""
 
 import logging
+from copy import deepcopy
+from datetime import datetime
+from uuid import uuid4
 
 import streamlit as st
 
@@ -13,6 +16,145 @@ st.set_page_config(
     page_icon="🌿",
     layout="centered",
 )
+
+# O histórico persistente fica no localStorage deste navegador, sem conta ou banco online.
+LOCAL_HISTORY_JS = r"""
+export default function(component) {
+  const { data, setStateValue } = component;
+  const storageKey = "vivabem_local_conversations_v1";
+
+  if (data.action === "load") {
+    if (!window.__vivabemHistoryLoaded) {
+      let conversations = [];
+      try {
+        const saved = window.localStorage.getItem(storageKey);
+        conversations = saved ? JSON.parse(saved) : [];
+        if (!Array.isArray(conversations)) conversations = [];
+      } catch (error) {
+        conversations = [];
+      }
+      window.__vivabemHistoryLoaded = true;
+      setStateValue("payload", { ready: true, conversations });
+    }
+    return;
+  }
+
+  if (data.action === "save") {
+    try {
+      window.localStorage.setItem(
+        storageKey,
+        JSON.stringify(data.conversations || [])
+      );
+    } catch (error) {
+      console.error("Não foi possível salvar o histórico local.", error);
+    }
+  }
+}
+"""
+LOCAL_HISTORY_COMPONENT = st.components.v2.component(
+    "vivabem_local_conversation_history",
+    js=LOCAL_HISTORY_JS,
+)
+
+MAX_SAVED_CONVERSATIONS = 20
+MAX_MESSAGES_PER_CONVERSATION = 150
+MAX_MESSAGE_LENGTH = 12000
+
+
+def clean_local_history(raw_history):
+    """Valida o conteúdo recuperado do navegador antes de mostrá-lo no app."""
+    if not isinstance(raw_history, list):
+        return []
+
+    cleaned = []
+    for item in raw_history[-MAX_SAVED_CONVERSATIONS:]:
+        if not isinstance(item, dict):
+            continue
+        messages = item.get("messages", [])
+        if not isinstance(messages, list):
+            continue
+        safe_messages = []
+        for message in messages[-MAX_MESSAGES_PER_CONVERSATION:]:
+            if not isinstance(message, dict):
+                continue
+            role = message.get("role")
+            content = message.get("content")
+            if role in {"user", "assistant"} and isinstance(content, str):
+                safe_messages.append({
+                    "role": role,
+                    "content": content[:MAX_MESSAGE_LENGTH],
+                })
+        if not safe_messages:
+            continue
+        conv_id = item.get("id")
+        if not isinstance(conv_id, str) or not conv_id:
+            conv_id = str(uuid4())
+        title = item.get("title")
+        if not isinstance(title, str) or not title:
+            title = "Conversa salva"
+        updated_at = item.get("updated_at")
+        if not isinstance(updated_at, str):
+            updated_at = ""
+        cleaned.append({
+            "id": conv_id[:80],
+            "title": title[:80],
+            "updated_at": updated_at[:40],
+            "messages": safe_messages,
+        })
+    return cleaned
+
+
+if "local_history_ready" not in st.session_state:
+    load_result = LOCAL_HISTORY_COMPONENT(
+        data={"action": "load"},
+        key="vivabem_load_history",
+    )
+    loaded_payload = getattr(load_result, "payload", None)
+    if not isinstance(loaded_payload, dict) or not loaded_payload.get("ready"):
+        st.info("Carregando conversas salvas neste navegador…")
+        st.stop()
+
+    st.session_state.local_conversations = clean_local_history(
+        loaded_payload.get("conversations", [])
+    )
+    latest = st.session_state.local_conversations[-1] if st.session_state.local_conversations else None
+    st.session_state.active_conversation_id = latest["id"] if latest else None
+    st.session_state.messages = deepcopy(latest["messages"]) if latest else []
+    st.session_state.local_history_ready = True
+
+
+def save_current_conversation():
+    """Atualiza a conversa ativa em memória; o componente persiste no navegador."""
+    messages = st.session_state.messages
+    if not messages:
+        return
+
+    conversation_id = st.session_state.active_conversation_id
+    if not conversation_id:
+        conversation_id = str(uuid4())
+        st.session_state.active_conversation_id = conversation_id
+
+    existing = next(
+        (item for item in st.session_state.local_conversations
+         if item["id"] == conversation_id),
+        None,
+    )
+    if existing:
+        conversation = existing
+    else:
+        conversation = {"id": conversation_id}
+        st.session_state.local_conversations.append(conversation)
+
+    first_user_message = next(
+        (item["content"] for item in messages if item["role"] == "user"),
+        "Nova conversa",
+    )
+    conversation["title"] = first_user_message.strip().replace("\n", " ")[:48]
+    conversation["updated_at"] = datetime.now().astimezone().isoformat(timespec="minutes")
+    conversation["messages"] = deepcopy(messages[-MAX_MESSAGES_PER_CONVERSATION:])
+    st.session_state.local_conversations.sort(key=lambda item: item.get("updated_at", ""))
+    st.session_state.local_conversations = st.session_state.local_conversations[-MAX_SAVED_CONVERSATIONS:]
+
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -116,6 +258,11 @@ with st.sidebar:
         "Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos. "
         "Em uma emergência, procure imediatamente um serviço de saúde local."
     )
+    st.caption(
+        "As conversas ficam salvas neste navegador. Em computadores compartilhados, "
+        "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
+        "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
+    )
     with st.expander("Fontes confiáveis de saúde"):
         st.caption(
             "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
@@ -124,9 +271,56 @@ with st.sidebar:
         for title, url in HEALTH_REFERENCES:
             st.markdown(f"- [{title}]({url})")
 
-    if st.button("Limpar conversa", use_container_width=True):
+    st.markdown("### Conversas neste navegador")
+    conversations = st.session_state.local_conversations
+    saved_ids = [item["id"] for item in conversations]
+    choices = [None] + saved_ids
+    active_id = st.session_state.active_conversation_id
+    selected_index = choices.index(active_id) if active_id in choices else 0
+
+    selected_id = st.selectbox(
+        "Abrir conversa salva",
+        options=choices,
+        index=selected_index,
+        format_func=lambda value: (
+            "Conversa nova" if value is None else next(
+                (f"{item['title']} · {datetime.fromisoformat(item['updated_at']).strftime('%d/%m/%Y %H:%M')}" for item in conversations
+                 if item["id"] == value),
+                "Conversa salva",
+            )
+        ),
+    )
+    if selected_id != st.session_state.active_conversation_id:
+        st.session_state.active_conversation_id = selected_id
+        selected_conversation = next(
+            (item for item in conversations if item["id"] == selected_id), None
+        )
+        st.session_state.messages = (
+            deepcopy(selected_conversation["messages"]) if selected_conversation else []
+        )
+
+    if st.button("Nova conversa", use_container_width=True):
+        st.session_state.active_conversation_id = None
         st.session_state.messages = []
         st.rerun()
+
+    active_exists = st.session_state.active_conversation_id in saved_ids
+    if st.button("Excluir conversa aberta", use_container_width=True, disabled=not active_exists):
+        st.session_state.local_conversations = [
+            item for item in conversations
+            if item["id"] != st.session_state.active_conversation_id
+        ]
+        st.session_state.active_conversation_id = None
+        st.session_state.messages = []
+        st.rerun()
+
+    with st.expander("Apagar todo o histórico deste navegador"):
+        st.caption("Isso remove as conversas salvas neste navegador e não pode ser desfeito.")
+        if st.button("Apagar histórico salvo", use_container_width=True):
+            st.session_state.local_conversations = []
+            st.session_state.active_conversation_id = None
+            st.session_state.messages = []
+            st.rerun()
 
 
 theme_is_dark = st.session_state.get("theme_mode", "Claro") == "Escuro"
@@ -341,12 +535,11 @@ for message in st.session_state.messages:
     avatar = "🙂" if message["role"] == "user" else "🌿"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
-        if message["role"] == "assistant":
-            st.caption("Resposta gerada pelo Gemini, sem pesquisa automática na web.")
 
 prompt = st.chat_input("Escreva uma pergunta geral...")
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
+    save_current_conversation()
     with st.chat_message("user", avatar="🙂"):
         st.markdown(prompt)
 
@@ -365,3 +558,14 @@ if prompt:
                 st.session_state.messages.append(
                     {"role": "assistant", "content": answer}
                 )
+                save_current_conversation()
+
+
+# Mantém uma cópia persistente apenas no armazenamento deste navegador.
+LOCAL_HISTORY_COMPONENT(
+    data={
+        "action": "save",
+        "conversations": st.session_state.local_conversations,
+    },
+    key="vivabem_save_history",
+)
