@@ -357,6 +357,11 @@ if high_contrast:
     sidebar_border = "#FFFFFF"
     notice_bg = "#000000"
     notice_text = "#FFFF00"
+    tip_cards = [
+        ("#000000", "#FFFFFF", "#FFFFFF"),
+        ("#000000", "#FFFFFF", "#FFFFFF"),
+        ("#000000", "#FFFFFF", "#FFFFFF"),
+    ]
 elif theme_is_dark:
     page_bg = "#101925"
     panel_bg = "#1B2938"
@@ -372,6 +377,11 @@ elif theme_is_dark:
     sidebar_border = "#AAB8C8"
     notice_bg = "#332B12"
     notice_text = "#FFF2B3"
+    tip_cards = [
+        ("#20382F", "#EAF7EF", "#D0E3D8"),
+        ("#3A3022", "#FFF2D8", "#E6D8BC"),
+        ("#243449", "#E5EFFB", "#D1DEEF"),
+    ]
 else:
     page_bg = "#F7F9FC"
     panel_bg = "#FFFFFF"
@@ -387,6 +397,11 @@ else:
     sidebar_border = "#65778C"
     notice_bg = "#FFF6CC"
     notice_text = "#322800"
+    tip_cards = [
+        ("#E8F4EF", "#214D40", "#4D6E62"),
+        ("#FFF1DF", "#71491D", "#806747"),
+        ("#EAF0FA", "#344774", "#52648A"),
+    ]
 
 motion_css = (
     "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; "
@@ -447,6 +462,16 @@ st.markdown(
         color: var(--text-color);
         font-size: calc(16px * var(--font-scale));
     }}
+    .tip-card {{
+        min-height: 150px;
+        padding: 1rem;
+        border-radius: 16px;
+        line-height: var(--line-spacing);
+        box-sizing: border-box;
+    }}
+    .tip-card .tip-icon {{ font-size: 1.65rem; margin-bottom: .4rem; }}
+    .tip-card strong {{ display: block; margin-bottom: .35rem; }}
+    .tip-card p {{ margin: 0; font-size: .92rem; }}
     [data-testid="stHeader"] {{ background: var(--page-bg); }}
     [data-testid="stSidebar"] > div {{ background: var(--sidebar-bg); }}
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
@@ -624,13 +649,58 @@ st.markdown(
 
 if not st.session_state.messages:
     st.info("Olá! Você pode perguntar sobre hábitos gerais de prevenção e bem-estar.")
+    st.markdown("### Quer uma ideia para começar?")
+    st.caption("Escolha um tema para enviar uma pergunta geral ao VivaBem.")
+
+    tip_ideas = [
+        {
+            "icon": "🥗",
+            "title": "Alimentação e hidratação",
+            "tip": "Pequenas escolhas e uma rotina de hidratação podem fazer parte do cuidado diário.",
+            "prompt": "Quais hábitos gerais podem ajudar a manter uma alimentação variada e uma boa hidratação no dia a dia?",
+        },
+        {
+            "icon": "☀️",
+            "title": "Movimento no dia a dia",
+            "tip": "Uma caminhada, dança ou pausa ativa pode ser um jeito simples de começar a se movimentar.",
+            "prompt": "Que formas gerais e graduais existem para incluir mais movimento na rotina?",
+        },
+        {
+            "icon": "🌙",
+            "title": "Sono e descanso",
+            "tip": "Horários regulares e um ambiente tranquilo podem ajudar a criar uma rotina de descanso.",
+            "prompt": "Quais hábitos gerais podem contribuir para uma rotina de sono mais regular e descanso?",
+        },
+    ]
+    tip_columns = st.columns(3, gap="medium")
+    for index, (column, idea) in enumerate(zip(tip_columns, tip_ideas)):
+        card_bg, card_text, card_muted = tip_cards[index]
+        with column:
+            with st.container(border=True):
+                st.markdown(
+                    f'''<div class="tip-card" style="background:{card_bg};color:{card_text}">
+                        <div class="tip-icon">{idea["icon"]}</div>
+                        <strong>{idea["title"]}</strong>
+                        <p style="color:{card_muted}">{idea["tip"]}</p>
+                    </div>''',
+                    unsafe_allow_html=True,
+                )
+                if st.button(
+                    "Perguntar sobre isso",
+                    key=f"tip_suggestion_{index}",
+                    use_container_width=True,
+                ):
+                    st.session_state["suggestion_prompt"] = idea["prompt"]
+                    st.rerun()
 
 for message in st.session_state.messages:
     avatar = "🙂" if message["role"] == "user" else "🌿"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
-prompt = st.chat_input("Escreva uma pergunta geral...")
+typed_prompt = st.chat_input("Escreva uma pergunta geral...")
+suggestion_prompt = st.session_state.pop("suggestion_prompt", None)
+prompt = suggestion_prompt or typed_prompt
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_current_conversation()
