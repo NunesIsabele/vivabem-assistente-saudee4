@@ -117,7 +117,11 @@ if "local_history_ready" not in st.session_state:
     st.session_state.local_conversations = clean_local_history(
         loaded_payload.get("conversations", [])
     )
-    latest = st.session_state.local_conversations[-1] if st.session_state.local_conversations else None
+    latest = (
+        st.session_state.local_conversations[-1]
+        if st.session_state.local_conversations
+        else None
+    )
     st.session_state.active_conversation_id = latest["id"] if latest else None
     st.session_state.messages = deepcopy(latest["messages"]) if latest else []
     st.session_state.local_history_ready = True
@@ -135,8 +139,11 @@ def save_current_conversation():
         st.session_state.active_conversation_id = conversation_id
 
     existing = next(
-        (item for item in st.session_state.local_conversations
-         if item["id"] == conversation_id),
+        (
+            item
+            for item in st.session_state.local_conversations
+            if item["id"] == conversation_id
+        ),
         None,
     )
     if existing:
@@ -150,10 +157,18 @@ def save_current_conversation():
         "Nova conversa",
     )
     conversation["title"] = first_user_message.strip().replace("\n", " ")[:48]
-    conversation["updated_at"] = datetime.now().astimezone().isoformat(timespec="minutes")
-    conversation["messages"] = deepcopy(messages[-MAX_MESSAGES_PER_CONVERSATION:])
-    st.session_state.local_conversations.sort(key=lambda item: item.get("updated_at", ""))
-    st.session_state.local_conversations = st.session_state.local_conversations[-MAX_SAVED_CONVERSATIONS:]
+    conversation["updated_at"] = datetime.now().astimezone().isoformat(
+        timespec="minutes"
+    )
+    conversation["messages"] = deepcopy(
+        messages[-MAX_MESSAGES_PER_CONVERSATION:]
+    )
+    st.session_state.local_conversations.sort(
+        key=lambda item: item.get("updated_at", "")
+    )
+    st.session_state.local_conversations = st.session_state.local_conversations[
+        -MAX_SAVED_CONVERSATIONS:
+    ]
 
 
 if "messages" not in st.session_state:
@@ -251,7 +266,9 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### Sobre o VivaBem")
-    st.write("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
+    st.write(
+        "Um protótipo de assistente para informações gerais de prevenção e bem-estar."
+    )
     st.markdown("**Importante**")
     st.caption(
         "Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos. "
@@ -282,9 +299,15 @@ with st.sidebar:
         options=choices,
         index=selected_index,
         format_func=lambda value: (
-            "Conversa nova" if value is None else next(
-                (f"{item['title']} · {datetime.fromisoformat(item['updated_at']).strftime('%d/%m/%Y %H:%M')}" for item in conversations
-                 if item["id"] == value),
+            "Conversa nova"
+            if value is None
+            else next(
+                (
+                    f"{item['title']} · "
+                    f"{datetime.fromisoformat(item['updated_at']).strftime('%d/%m/%Y %H:%M')}"
+                    for item in conversations
+                    if item["id"] == value
+                ),
                 "Conversa salva",
             )
         ),
@@ -292,10 +315,13 @@ with st.sidebar:
     if selected_id != st.session_state.active_conversation_id:
         st.session_state.active_conversation_id = selected_id
         selected_conversation = next(
-            (item for item in conversations if item["id"] == selected_id), None
+            (item for item in conversations if item["id"] == selected_id),
+            None,
         )
         st.session_state.messages = (
-            deepcopy(selected_conversation["messages"]) if selected_conversation else []
+            deepcopy(selected_conversation["messages"])
+            if selected_conversation
+            else []
         )
 
     if st.button("Nova conversa", use_container_width=True):
@@ -304,9 +330,14 @@ with st.sidebar:
         st.rerun()
 
     active_exists = st.session_state.active_conversation_id in saved_ids
-    if st.button("Excluir conversa aberta", use_container_width=True, disabled=not active_exists):
+    if st.button(
+        "Excluir conversa aberta",
+        use_container_width=True,
+        disabled=not active_exists,
+    ):
         st.session_state.local_conversations = [
-            item for item in conversations
+            item
+            for item in conversations
             if item["id"] != st.session_state.active_conversation_id
         ]
         st.session_state.active_conversation_id = None
@@ -314,7 +345,9 @@ with st.sidebar:
         st.rerun()
 
     with st.expander("Apagar todo o histórico deste navegador"):
-        st.caption("Isso remove as conversas salvas neste navegador e não pode ser desfeito.")
+        st.caption(
+            "Isso remove as conversas salvas neste navegador e não pode ser desfeito."
+        )
         if st.button("Apagar histórico salvo", use_container_width=True):
             st.session_state.local_conversations = []
             st.session_state.active_conversation_id = None
@@ -402,6 +435,7 @@ else:
         ("#FFF1DF", "#71491D", "#806747"),
         ("#EAF0FA", "#344774", "#52648A"),
     ]
+
 
 motion_css = (
     "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; "
@@ -656,35 +690,58 @@ if not st.session_state.messages:
         {
             "icon": "🥗",
             "title": "Alimentação e hidratação",
-            "tip": "Pequenas escolhas e uma rotina de hidratação podem fazer parte do cuidado diário.",
-            "prompt": "Quais hábitos gerais podem ajudar a manter uma alimentação variada e uma boa hidratação no dia a dia?",
+            "tip": (
+                "Pequenas escolhas e uma rotina de hidratação podem fazer parte "
+                "do cuidado diário."
+            ),
+            "prompt": (
+                "Quais hábitos gerais podem ajudar a manter uma alimentação "
+                "variada e uma boa hidratação no dia a dia?"
+            ),
         },
         {
             "icon": "☀️",
             "title": "Movimento no dia a dia",
-            "tip": "Uma caminhada, dança ou pausa ativa pode ser um jeito simples de começar a se movimentar.",
-            "prompt": "Que formas gerais e graduais existem para incluir mais movimento na rotina?",
+            "tip": (
+                "Uma caminhada, dança ou pausa ativa pode ser um jeito simples "
+                "de começar a se movimentar."
+            ),
+            "prompt": (
+                "Que formas gerais e graduais existem para incluir mais "
+                "movimento na rotina?"
+            ),
         },
         {
             "icon": "🌙",
             "title": "Sono e descanso",
-            "tip": "Horários regulares e um ambiente tranquilo podem ajudar a criar uma rotina de descanso.",
-            "prompt": "Quais hábitos gerais podem contribuir para uma rotina de sono mais regular e descanso?",
+            "tip": (
+                "Horários regulares e um ambiente tranquilo podem ajudar a "
+                "criar uma rotina de descanso."
+            ),
+            "prompt": (
+                "Quais hábitos gerais podem contribuir para uma rotina de sono "
+                "mais regular e descanso?"
+            ),
         },
     ]
+
     tip_columns = st.columns(3, gap="medium")
+
     for index, (column, idea) in enumerate(zip(tip_columns, tip_ideas)):
         card_bg, card_text, card_muted = tip_cards[index]
+
         with column:
             with st.container(border=True):
-                st.markdown(
-                    f'''<div class="tip-card" style="background:{card_bg};color:{card_text}">
-                        <div class="tip-icon">{idea["icon"]}</div>
-                        <strong>{idea["title"]}</strong>
-                        <p style="color:{card_muted}">{idea["tip"]}</p>
-                    </div>''',
-                    unsafe_allow_html=True,
-                )
+                card_html = f"""
+                <div class="tip-card"
+                     style="background:{card_bg}; color:{card_text}">
+                    <div class="tip-icon">{idea["icon"]}</div>
+                    <strong>{idea["title"]}</strong>
+                    <p style="color:{card_muted}">{idea["tip"]}</p>
+                </div>
+                """
+                st.markdown(card_html, unsafe_allow_html=True)
+
                 if st.button(
                     "Perguntar sobre isso",
                     key=f"tip_suggestion_{index}",
@@ -692,6 +749,7 @@ if not st.session_state.messages:
                 ):
                     st.session_state["suggestion_prompt"] = idea["prompt"]
                     st.rerun()
+
 
 for message in st.session_state.messages:
     avatar = "🙂" if message["role"] == "user" else "🌿"
@@ -701,9 +759,11 @@ for message in st.session_state.messages:
 typed_prompt = st.chat_input("Escreva uma pergunta geral...")
 suggestion_prompt = st.session_state.pop("suggestion_prompt", None)
 prompt = suggestion_prompt or typed_prompt
+
 if prompt:
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_current_conversation()
+
     with st.chat_message("user", avatar="🙂"):
         st.markdown(prompt)
 
