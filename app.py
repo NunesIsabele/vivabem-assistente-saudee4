@@ -1,5 +1,4 @@
 """Interface do VivaBem com acessibilidade e sem busca automática na web."""
-## Ajustar a interface e o contraste das cores
 
 import logging
 from copy import deepcopy
@@ -118,11 +117,7 @@ if "local_history_ready" not in st.session_state:
     st.session_state.local_conversations = clean_local_history(
         loaded_payload.get("conversations", [])
     )
-    latest = (
-        st.session_state.local_conversations[-1]
-        if st.session_state.local_conversations
-        else None
-    )
+    latest = st.session_state.local_conversations[-1] if st.session_state.local_conversations else None
     st.session_state.active_conversation_id = latest["id"] if latest else None
     st.session_state.messages = deepcopy(latest["messages"]) if latest else []
     st.session_state.local_history_ready = True
@@ -140,11 +135,8 @@ def save_current_conversation():
         st.session_state.active_conversation_id = conversation_id
 
     existing = next(
-        (
-            item
-            for item in st.session_state.local_conversations
-            if item["id"] == conversation_id
-        ),
+        (item for item in st.session_state.local_conversations
+         if item["id"] == conversation_id),
         None,
     )
     if existing:
@@ -158,38 +150,14 @@ def save_current_conversation():
         "Nova conversa",
     )
     conversation["title"] = first_user_message.strip().replace("\n", " ")[:48]
-    conversation["updated_at"] = datetime.now().astimezone().isoformat(
-        timespec="minutes"
-    )
-    conversation["messages"] = deepcopy(
-        messages[-MAX_MESSAGES_PER_CONVERSATION:]
-    )
-    st.session_state.local_conversations.sort(
-        key=lambda item: item.get("updated_at", "")
-    )
-    st.session_state.local_conversations = st.session_state.local_conversations[
-        -MAX_SAVED_CONVERSATIONS:
-    ]
+    conversation["updated_at"] = datetime.now().astimezone().isoformat(timespec="minutes")
+    conversation["messages"] = deepcopy(messages[-MAX_MESSAGES_PER_CONVERSATION:])
+    st.session_state.local_conversations.sort(key=lambda item: item.get("updated_at", ""))
+    st.session_state.local_conversations = st.session_state.local_conversations[-MAX_SAVED_CONVERSATIONS:]
 
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
-
-PALETTE_LIGHT = {
-    "Amarelo": "#806000",
-    "Verde": "#1F6D49",
-    "Azul": "#205A9C",
-    "Roxo": "#5D3FA1",
-    "Laranja": "#9C4B10",
-}
-
-PALETTE_DARK = {
-    "Amarelo": "#F4D35E",
-    "Verde": "#65C995",
-    "Azul": "#80B5FF",
-    "Roxo": "#BEA2FF",
-    "Laranja": "#FFAE70",
-}
 
 HEALTH_REFERENCES = [
     (
@@ -222,23 +190,58 @@ HEALTH_REFERENCES = [
     ),
 ]
 
+MESSAGE_COLORS = {
+    "Verde claro": "#CFE7D3",
+    "Azul claro": "#DCE7F5",
+    "Lavanda": "#E8DDF4",
+    "Pêssego": "#F4E1D2",
+    "Rosa suave": "#F2DDE5",
+    "Cinza suave": "#DCE2E6",
+}
+DEFAULT_USER_MESSAGE_COLOR = "Verde claro"
+DEFAULT_ASSISTANT_MESSAGE_COLOR = "Azul claro"
 
+
+def blend_hex_colors(background, foreground, foreground_ratio):
+    """Mistura duas cores HEX sem depender de suporte CSS do navegador."""
+    background = background.lstrip("#")
+    foreground = foreground.lstrip("#")
+    ratio = max(0.0, min(1.0, foreground_ratio))
+    channels = [
+        round(int(background[index:index + 2], 16) * (1 - ratio)
+              + int(foreground[index:index + 2], 16) * ratio)
+        for index in (0, 2, 4)
+    ]
+    return "#" + "".join(f"{channel:02X}" for channel in channels)
 def reset_accessibility_settings():
     """Restaura os valores iniciais dos controles de acessibilidade."""
-    st.session_state.theme_mode = "Claro"
-    st.session_state.accent_color = "Amarelo"
     st.session_state.high_contrast = False
     st.session_state.font_scale = 100
     st.session_state.line_spacing = 1.6
     st.session_state.reduce_motion = True
+    st.session_state.user_message_color = DEFAULT_USER_MESSAGE_COLOR
+    st.session_state.assistant_message_color = DEFAULT_ASSISTANT_MESSAGE_COLOR
 
 
 with st.sidebar:
     st.markdown("## Acessibilidade")
-    st.caption("Personalize a aparência e a leitura do VivaBem.")
-    st.selectbox("Tema", ["Claro", "Escuro"], key="theme_mode") # <--- Tenta apagar essa linha
-    st.selectbox("Cor de destaque", list(PALETTE_LIGHT), key="accent_color")
+    with st.container(key="viva_sidebar_accessibility_note"):
+        st.markdown("Personalize a aparência e a leitura do VivaBem.")
     st.checkbox("Ativar alto contraste", key="high_contrast")
+    st.selectbox(
+        "Cor das suas mensagens",
+        options=list(MESSAGE_COLORS),
+        index=list(MESSAGE_COLORS).index(DEFAULT_USER_MESSAGE_COLOR),
+        key="user_message_color",
+        help="Escolha a cor das caixas com as mensagens que você envia.",
+    )
+    st.selectbox(
+        "Cor das respostas do VivaBem",
+        options=list(MESSAGE_COLORS),
+        index=list(MESSAGE_COLORS).index(DEFAULT_ASSISTANT_MESSAGE_COLOR),
+        key="assistant_message_color",
+        help="Escolha a cor das caixas com as respostas do protótipo.",
+    )
     st.slider(
         "Tamanho do texto",
         min_value=100,
@@ -267,24 +270,26 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### Sobre o VivaBem")
-    st.write(
-        "Um protótipo de assistente para informações gerais de prevenção e bem-estar."
-    )
-    st.markdown("**Importante**")
-    st.caption(
-        "Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos. "
-        "Em uma emergência, procure imediatamente um serviço de saúde local."
-    )
-    st.caption(
-        "As conversas ficam salvas neste navegador. Em computadores compartilhados, "
-        "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
-        "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
-    )
-    with st.expander("Fontes confiáveis de saúde"):
-        st.caption(
-            "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
-            "as respostas do Gemini podem não usar estes materiais."
+    with st.container(key="viva_sidebar_about_note"):
+        st.markdown("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
+    with st.container(key="viva_sidebar_safety_note"):
+        st.markdown(
+            "**Importante**\n\n"
+            "**Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos.**\n\n"
+            "**Em uma emergência, procure imediatamente um serviço de saúde local.**"
         )
+    with st.container(key="viva_sidebar_privacy_note"):
+        st.markdown(
+            "**As conversas ficam salvas neste navegador.** Em computadores compartilhados, "
+            "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
+            "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
+        )
+    with st.expander("Fontes confiáveis de saúde"):
+        with st.container(key="viva_sidebar_sources_note"):
+            st.markdown(
+                "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
+                "as respostas do Gemini podem não usar estes materiais."
+            )
         for title, url in HEALTH_REFERENCES:
             st.markdown(f"- [{title}]({url})")
 
@@ -300,15 +305,9 @@ with st.sidebar:
         options=choices,
         index=selected_index,
         format_func=lambda value: (
-            "Conversa nova"
-            if value is None
-            else next(
-                (
-                    f"{item['title']} · "
-                    f"{datetime.fromisoformat(item['updated_at']).strftime('%d/%m/%Y %H:%M')}"
-                    for item in conversations
-                    if item["id"] == value
-                ),
+            "Conversa nova" if value is None else next(
+                (f"{item['title']} · {datetime.fromisoformat(item['updated_at']).strftime('%d/%m/%Y %H:%M')}" for item in conversations
+                 if item["id"] == value),
                 "Conversa salva",
             )
         ),
@@ -316,13 +315,10 @@ with st.sidebar:
     if selected_id != st.session_state.active_conversation_id:
         st.session_state.active_conversation_id = selected_id
         selected_conversation = next(
-            (item for item in conversations if item["id"] == selected_id),
-            None,
+            (item for item in conversations if item["id"] == selected_id), None
         )
         st.session_state.messages = (
-            deepcopy(selected_conversation["messages"])
-            if selected_conversation
-            else []
+            deepcopy(selected_conversation["messages"]) if selected_conversation else []
         )
 
     if st.button("Nova conversa", use_container_width=True):
@@ -331,14 +327,9 @@ with st.sidebar:
         st.rerun()
 
     active_exists = st.session_state.active_conversation_id in saved_ids
-    if st.button(
-        "Excluir conversa aberta",
-        use_container_width=True,
-        disabled=not active_exists,
-    ):
+    if st.button("Excluir conversa aberta", use_container_width=True, disabled=not active_exists):
         st.session_state.local_conversations = [
-            item
-            for item in conversations
+            item for item in conversations
             if item["id"] != st.session_state.active_conversation_id
         ]
         st.session_state.active_conversation_id = None
@@ -346,9 +337,7 @@ with st.sidebar:
         st.rerun()
 
     with st.expander("Apagar todo o histórico deste navegador"):
-        st.caption(
-            "Isso remove as conversas salvas neste navegador e não pode ser desfeito."
-        )
+        st.caption("Isso remove as conversas salvas neste navegador e não pode ser desfeito.")
         if st.button("Apagar histórico salvo", use_container_width=True):
             st.session_state.local_conversations = []
             st.session_state.active_conversation_id = None
@@ -365,24 +354,42 @@ st.selectbox(
         "mais compacta. Computador usa mais espaço quando a tela é larga."
     ),
 )
-st.caption("Você pode mudar esta opção a qualquer momento.")
+st.markdown("**Você pode mudar esta opção a qualquer momento.**")
 
-theme_is_dark = st.session_state.get("theme_mode", "Claro") == "Escuro"
 high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
 reduce_motion = st.session_state.get("reduce_motion", True)
-accent_palette = PALETTE_DARK if theme_is_dark else PALETTE_LIGHT
-accent = accent_palette.get(st.session_state.get("accent_color", "Amarelo"), "#806000")
+user_message_tint = MESSAGE_COLORS.get(
+    st.session_state.get("user_message_color", DEFAULT_USER_MESSAGE_COLOR),
+    MESSAGE_COLORS[DEFAULT_USER_MESSAGE_COLOR],
+)
+assistant_message_tint = MESSAGE_COLORS.get(
+    st.session_state.get("assistant_message_color", DEFAULT_ASSISTANT_MESSAGE_COLOR),
+    MESSAGE_COLORS[DEFAULT_ASSISTANT_MESSAGE_COLOR],
+)
+accent = "#557B62"
 
 if high_contrast:
     page_bg = "#000000"
-    panel_bg = "#0B0B0B"
-    message_bg = "#111111"
+    panel_bg = "#101010"
+    secondary_bg = "#101010"
     text_color = "#FFFFFF"
     muted_color = "#FFFFFF"
     border_color = "#FFFFFF"
+    emphasis_color = "#FFFF00"
     accent = "#FFFF00"
+    user_message_bg = blend_hex_colors("#000000", user_message_tint, 0.24)
+    assistant_message_bg = blend_hex_colors("#000000", assistant_message_tint, 0.24)
+    user_message_border = "#FFFF00"
+    assistant_message_border = "#FFFFFF"
+    message_bg = "#101010"
+    sidebar_safety_bg = "#000000"
+    sidebar_safety_border = "#FFFF00"
+    sidebar_privacy_bg = "#000000"
+    sidebar_privacy_border = "#FFFFFF"
+    sidebar_info_bg = "#000000"
+    sidebar_info_border = "#FFFFFF"
     sidebar_bg = "#000000"
     sidebar_text = "#FFFFFF"
     sidebar_muted = "#FFFFFF"
@@ -396,47 +403,39 @@ if high_contrast:
         ("#000000", "#FFFFFF", "#FFFFFF"),
         ("#000000", "#FFFFFF", "#FFFFFF"),
     ]
-elif theme_is_dark:
-    page_bg = "#101925"
-    panel_bg = "#1B2938"
-    message_bg = "#1B2938"
-    text_color = "#F4F7FB"
-    muted_color = "#D0DAE5"
-    border_color = "#71849A"
-    sidebar_bg = "#14263D"
-    sidebar_text = "#FFFFFF"
-    sidebar_muted = "#E8EEF5"
-    sidebar_control_bg = "#0B1017"
-    sidebar_control_text = "#FFFFFF"
-    sidebar_border = "#AAB8C8"
-    notice_bg = "#332B12"
-    notice_text = "#FFF2B3"
-    tip_cards = [
-        ("#20382F", "#EAF7EF", "#D0E3D8"),
-        ("#3A3022", "#FFF2D8", "#E6D8BC"),
-        ("#243449", "#E5EFFB", "#D1DEEF"),
-    ]
 else:
-    page_bg = "#F7F9FC"
-    panel_bg = "#FFFFFF"
-    message_bg = "#E9EEF5"
-    text_color = "#14263D"
-    muted_color = "#35485E"
-    border_color = "#8796A8"
-    sidebar_bg = "#E8EDF3"
-    sidebar_text = "#14263D"
-    sidebar_muted = "#35485E"
-    sidebar_control_bg = "#FFFFFF"
-    sidebar_control_text = "#14263D"
-    sidebar_border = "#65778C"
-    notice_bg = "#FFF6CC"
-    notice_text = "#322800"
+    # O Streamlit controla claro/escuro; as cores personalizadas se misturam ao tema ativo.
+    page_bg = "var(--background-color)"
+    panel_bg = "var(--secondary-background-color)"
+    secondary_bg = "var(--secondary-background-color)"
+    message_bg = "color-mix(in srgb, var(--secondary-background-color) 94%, var(--viva-accent-color) 6%)"
+    user_message_bg = f"color-mix(in srgb, var(--secondary-background-color) 66%, {user_message_tint} 34%)"
+    assistant_message_bg = f"color-mix(in srgb, var(--secondary-background-color) 66%, {assistant_message_tint} 34%)"
+    user_message_border = f"color-mix(in srgb, var(--viva-border-color) 35%, {user_message_tint} 65%)"
+    assistant_message_border = f"color-mix(in srgb, var(--viva-border-color) 35%, {assistant_message_tint} 65%)"
+    sidebar_safety_bg = "color-mix(in srgb, var(--secondary-background-color) 82%, #F2E5C4 18%)"
+    sidebar_safety_border = "color-mix(in srgb, var(--text-color) 22%, #B49C5B 78%)"
+    sidebar_privacy_bg = "color-mix(in srgb, var(--secondary-background-color) 82%, #CFE7D3 18%)"
+    sidebar_privacy_border = "color-mix(in srgb, var(--text-color) 20%, #6F997B 80%)"
+    sidebar_info_bg = "color-mix(in srgb, var(--secondary-background-color) 86%, #DCE7F5 14%)"
+    sidebar_info_border = "color-mix(in srgb, var(--text-color) 15%, #8DA7B7 85%)"
+    text_color = "var(--text-color)"
+    emphasis_color = "color-mix(in srgb, var(--text-color) 78%, #557B62 22%)"
+    muted_color = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
+    border_color = "color-mix(in srgb, var(--text-color) 18%, var(--background-color) 82%)"
+    sidebar_bg = "var(--secondary-background-color)"
+    sidebar_text = "var(--text-color)"
+    sidebar_muted = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
+    sidebar_control_bg = "var(--background-color)"
+    sidebar_control_text = "var(--text-color)"
+    sidebar_border = "color-mix(in srgb, var(--text-color) 20%, var(--background-color) 80%)"
+    notice_bg = "color-mix(in srgb, var(--secondary-background-color) 91%, #F2E5C4 9%)"
+    notice_text = "var(--text-color)"
     tip_cards = [
-        ("#E8F4EF", "#214D40", "#4D6E62"),
-        ("#FFF1DF", "#71491D", "#806747"),
-        ("#EAF0FA", "#344774", "#52648A"),
+        ("color-mix(in srgb, var(--secondary-background-color) 90%, #D7EFE1 10%)", text_color, muted_color),
+        ("color-mix(in srgb, var(--secondary-background-color) 90%, #F4E4D3 10%)", text_color, muted_color),
+        ("color-mix(in srgb, var(--secondary-background-color) 90%, #DCE7F5 10%)", text_color, muted_color),
     ]
-
 
 motion_css = (
     "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; "
@@ -479,10 +478,21 @@ st.markdown(
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
-        --text-color: {text_color};
-        --muted-color: {muted_color};
-        --border-color: {border_color};
-        --accent-color: {accent};
+        --user-message-bg: {user_message_bg};
+        --assistant-message-bg: {assistant_message_bg};
+        --user-message-border: {user_message_border};
+        --assistant-message-border: {assistant_message_border};
+        --sidebar-safety-bg: {sidebar_safety_bg};
+        --sidebar-safety-border: {sidebar_safety_border};
+        --sidebar-privacy-bg: {sidebar_privacy_bg};
+        --sidebar-privacy-border: {sidebar_privacy_border};
+        --sidebar-info-bg: {sidebar_info_bg};
+        --sidebar-info-border: {sidebar_info_border};
+        --viva-text-color: {text_color};
+        --viva-emphasis-color: {emphasis_color};
+        --viva-muted-color: {muted_color};
+        --viva-border-color: {border_color};
+        --viva-accent-color: {accent};
         --sidebar-bg: {sidebar_bg};
         --sidebar-text: {sidebar_text};
         --sidebar-muted: {sidebar_muted};
@@ -494,21 +504,67 @@ st.markdown(
     }}
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
         background: var(--page-bg);
-        color: var(--text-color);
+        color: var(--viva-text-color);
         font-size: calc(16px * var(--font-scale));
     }}
+    html, body, [data-testid="stApp"] {{
+        background: var(--page-bg) !important;
+        color: var(--viva-text-color) !important;
+    }}
+    input[type="checkbox"], input[type="radio"] {{ accent-color: var(--primary-color) !important; }}
     .tip-card {{
         min-height: 150px;
-        padding: 1rem;
-        border-radius: 16px;
+        padding: 1.15rem;
+        border: 1px solid color-mix(in srgb, var(--viva-text-color) 10%, transparent);
+        border-radius: 18px;
         line-height: var(--line-spacing);
         box-sizing: border-box;
+        box-shadow: 0 8px 22px rgba(30, 55, 65, .06);
     }}
     .tip-card .tip-icon {{ font-size: 1.65rem; margin-bottom: .4rem; }}
     .tip-card strong {{ display: block; margin-bottom: .35rem; }}
     .tip-card p {{ margin: 0; font-size: .92rem; }}
+    .stButton > button {{
+        border-radius: 12px !important;
+        color: var(--viva-accent-color) !important;
+        background: var(--panel-bg) !important;
+        border-color: color-mix(in srgb, var(--viva-accent-color) 38%, var(--viva-border-color)) !important;
+        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+    }}
+    .stButton > button:hover {{
+        transform: translateY(-1px);
+        border-color: var(--viva-accent-color) !important;
+        background: color-mix(in srgb, var(--panel-bg) 92%, #D7EFE1 8%) !important;
+        box-shadow: 0 5px 14px rgba(30, 55, 65, .08);
+    }}
     [data-testid="stHeader"] {{ background: var(--page-bg); }}
     [data-testid="stSidebar"] > div {{ background: var(--sidebar-bg); }}
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_accessibility_note"],
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_about_note"],
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_sources_note"] {{
+        background: var(--sidebar-info-bg) !important;
+        border: 1px solid var(--sidebar-info-border) !important;
+        border-left: 4px solid var(--sidebar-info-border) !important;
+        border-radius: 12px !important;
+        padding: .15rem .7rem !important;
+        margin: .35rem 0 .7rem !important;
+    }}
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_safety_note"] {{
+        background: var(--sidebar-safety-bg) !important;
+        border: 1px solid var(--sidebar-safety-border) !important;
+        border-left: 4px solid var(--sidebar-safety-border) !important;
+        border-radius: 13px !important;
+        padding: .2rem .7rem !important;
+        margin: .35rem 0 .7rem !important;
+    }}
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_privacy_note"] {{
+        background: var(--sidebar-privacy-bg) !important;
+        border: 1px solid var(--sidebar-privacy-border) !important;
+        border-left: 4px solid var(--sidebar-privacy-border) !important;
+        border-radius: 13px !important;
+        padding: .2rem .7rem !important;
+        margin: .35rem 0 .7rem !important;
+    }}
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
@@ -541,51 +597,74 @@ st.markdown(
         border-radius: 9px !important;
         opacity: 1 !important;
     }}
-    [data-testid="stSidebar"] button:hover {{ border-color: var(--accent-color) !important; }}
-    [data-testid="stSidebar"] [data-baseweb="slider"] {{ color: var(--accent-color) !important; }}
+    [data-testid="stSidebar"] button:hover {{ border-color: var(--viva-accent-color) !important; }}
+    [data-testid="stSidebar"] [data-baseweb="slider"] {{ color: var(--viva-accent-color) !important; }}
     [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
     [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] strong,
     [data-testid="stChatMessageContent"], [data-testid="stChatMessageContent"] *,
     [data-testid="stAlert"] *, [data-testid="stCaptionContainer"] {{
-        color: var(--text-color) !important;
+        color: var(--viva-text-color) !important;
         line-height: var(--line-spacing) !important;
         font-size: calc(1rem * var(--font-scale)) !important;
     }}
     [data-testid="stMarkdownContainer"] a {{
-        color: var(--accent-color) !important;
+        color: var(--viva-accent-color) !important;
         text-decoration: underline !important;
+    }}
+    [data-testid="stMarkdownContainer"] strong,
+    [data-testid="stChatMessageContent"] strong,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3,
+    .hero h1, .tip-card strong, .notice strong {{
+        color: var(--viva-emphasis-color) !important;
+        font-weight: 700 !important;
     }}
     [data-testid="stAlert"] {{
         background: var(--message-bg) !important;
-        border: 1px solid var(--border-color) !important;
+        border: 1px solid var(--viva-border-color) !important;
     }}
     [data-testid="stChatMessage"] {{
-        background: var(--message-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 14px;
-        padding: .7rem .9rem;
+        min-width: 0 !important;
+        background: var(--assistant-message-bg) !important;
+        border: 1px solid var(--assistant-message-border) !important;
+        border-left: 5px solid var(--assistant-message-border) !important;
+        border-radius: 16px !important;
+        padding: .8rem 1rem !important;
+        margin: .45rem 0 .75rem !important;
+        box-shadow: 0 5px 16px rgba(30, 55, 65, .05) !important;
+    }}
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
+        background: var(--user-message-bg) !important;
+        border-color: var(--user-message-border) !important;
+        border-left-color: var(--user-message-border) !important;
+    }}
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
+        background: var(--assistant-message-bg) !important;
+        border-color: var(--assistant-message-border) !important;
+        border-left-color: var(--assistant-message-border) !important;
     }}
     [data-testid="stChatInput"] textarea {{
-        color: var(--text-color) !important;
+        color: var(--viva-text-color) !important;
         background: var(--panel-bg) !important;
-        border-color: var(--border-color) !important;
+        border-color: var(--viva-border-color) !important;
+        border-radius: 14px !important;
         font-size: calc(1rem * var(--font-scale)) !important;
     }}
-    [data-testid="stChatInput"] textarea::placeholder {{ color: var(--muted-color) !important; }}
+    [data-testid="stChatInput"] textarea::placeholder {{ color: var(--viva-muted-color) !important; }}
     [data-testid="stChatInput"] > div, [data-testid="stChatInput"] {{
         background: var(--panel-bg) !important;
-        border-color: var(--border-color) !important;
+        border-color: var(--viva-border-color) !important;
     }}
     [data-baseweb="popover"] [role="listbox"],
     [data-baseweb="popover"] [role="option"] {{
-        color: var(--text-color) !important;
+        color: var(--viva-text-color) !important;
         background: var(--panel-bg) !important;
     }}
     [data-testid="stSidebar"] button:focus,
     [data-testid="stSidebar"] input:focus,
     [data-testid="stSidebar"] [role="combobox"]:focus,
     [data-testid="stChatInput"] textarea:focus {{
-        outline: 3px solid var(--accent-color) !important;
+        outline: 3px solid var(--viva-accent-color) !important;
         outline-offset: 2px !important;
     }}
     .block-container {{
@@ -596,24 +675,27 @@ st.markdown(
         box-sizing: border-box;
     }}
     .hero {{
-        padding: 1.5rem 1.8rem;
-        border-radius: 18px;
-        color: var(--text-color);
-        background: var(--panel-bg);
-        border: 2px solid var(--accent-color);
+        padding: 1.65rem 1.9rem;
+        border-radius: 22px;
+        color: var(--viva-text-color);
+        background: linear-gradient(135deg, var(--panel-bg), color-mix(in srgb, var(--panel-bg) 94%, #DCEFE5 6%));
+        border: 1px solid var(--viva-border-color);
+        box-shadow: 0 12px 30px rgba(30, 55, 65, .06);
         margin-bottom: 1rem;
     }}
-    .hero h1 {{ margin: 0; font-size: calc(2rem * var(--font-scale)); color: var(--text-color); }}
-    .hero p {{ margin: .5rem 0 0; color: var(--muted-color); font-size: calc(1rem * var(--font-scale)); }}
+    .hero h1 {{ margin: 0; font-size: calc(2rem * var(--font-scale)); color: var(--viva-text-color); letter-spacing: -.025em; }}
+    .hero p {{ margin: .5rem 0 0; color: var(--viva-muted-color); font-size: calc(1rem * var(--font-scale)); }}
     .notice {{
         padding: .9rem 1rem;
-        border-radius: 12px;
+        border-radius: 14px;
         background: {notice_bg};
-        border: 2px solid var(--accent-color);
+        border: 1px solid var(--viva-border-color);
+        border-left: 4px solid var(--viva-accent-color);
         color: {notice_text};
         font-size: calc(.95rem * var(--font-scale));
         line-height: var(--line-spacing);
         margin-bottom: 1rem;
+        box-shadow: 0 6px 18px rgba(30, 55, 65, .04);
     }}
     .notice * {{ color: {notice_text} !important; }}
     /* Ajustes para celular: reduz margens e impede que conteúdo ultrapasse a tela. */
@@ -685,64 +767,41 @@ st.markdown(
 if not st.session_state.messages:
     st.info("Olá! Você pode perguntar sobre hábitos gerais de prevenção e bem-estar.")
     st.markdown("### Quer uma ideia para começar?")
-    st.caption("Escolha um tema para enviar uma pergunta geral ao VivaBem.")
+    st.markdown("**Escolha um tema para enviar uma pergunta geral ao VivaBem.**")
 
     tip_ideas = [
         {
             "icon": "🥗",
             "title": "Alimentação e hidratação",
-            "tip": (
-                "Pequenas escolhas e uma rotina de hidratação podem fazer parte "
-                "do cuidado diário."
-            ),
-            "prompt": (
-                "Quais hábitos gerais podem ajudar a manter uma alimentação "
-                "variada e uma boa hidratação no dia a dia?"
-            ),
+            "tip": "Pequenas escolhas e uma rotina de hidratação podem fazer parte do cuidado diário.",
+            "prompt": "Quais hábitos gerais podem ajudar a manter uma alimentação variada e uma boa hidratação no dia a dia?",
         },
         {
             "icon": "☀️",
             "title": "Movimento no dia a dia",
-            "tip": (
-                "Uma caminhada, dança ou pausa ativa pode ser um jeito simples "
-                "de começar a se movimentar."
-            ),
-            "prompt": (
-                "Que formas gerais e graduais existem para incluir mais "
-                "movimento na rotina?"
-            ),
+            "tip": "Uma caminhada, dança ou pausa ativa pode ser um jeito simples de começar a se movimentar.",
+            "prompt": "Que formas gerais e graduais existem para incluir mais movimento na rotina?",
         },
         {
             "icon": "🌙",
             "title": "Sono e descanso",
-            "tip": (
-                "Horários regulares e um ambiente tranquilo podem ajudar a "
-                "criar uma rotina de descanso."
-            ),
-            "prompt": (
-                "Quais hábitos gerais podem contribuir para uma rotina de sono "
-                "mais regular e descanso?"
-            ),
+            "tip": "Horários regulares e um ambiente tranquilo podem ajudar a criar uma rotina de descanso.",
+            "prompt": "Quais hábitos gerais podem contribuir para uma rotina de sono mais regular e descanso?",
         },
     ]
-
     tip_columns = st.columns(3, gap="medium")
-
     for index, (column, idea) in enumerate(zip(tip_columns, tip_ideas)):
         card_bg, card_text, card_muted = tip_cards[index]
-
         with column:
             with st.container(border=True):
-                card_html = f"""
-                <div class="tip-card"
-                     style="background:{card_bg}; color:{card_text}">
-                    <div class="tip-icon">{idea["icon"]}</div>
-                    <strong>{idea["title"]}</strong>
-                    <p style="color:{card_muted}">{idea["tip"]}</p>
-                </div>
-                """
-                st.markdown(card_html, unsafe_allow_html=True)
-
+                st.markdown(
+                    f'''<div class="tip-card" style="background:{card_bg};color:{card_text}">
+                        <div class="tip-icon">{idea["icon"]}</div>
+                        <strong>{idea["title"]}</strong>
+                        <p style="color:{card_muted}">{idea["tip"]}</p>
+                    </div>''',
+                    unsafe_allow_html=True,
+                )
                 if st.button(
                     "Perguntar sobre isso",
                     key=f"tip_suggestion_{index}",
@@ -751,22 +810,24 @@ if not st.session_state.messages:
                     st.session_state["suggestion_prompt"] = idea["prompt"]
                     st.rerun()
 
+def render_chat_message(role, content):
+    """Mostra a fala; o CSS aplica a caixa diretamente ao st.chat_message."""
+    avatar = "🙂" if role == "user" else "🌿"
+    with st.chat_message(role, avatar=avatar):
+        st.markdown(content)
+
 
 for message in st.session_state.messages:
-    avatar = "🙂" if message["role"] == "user" else "🌿"
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
+    render_chat_message(message["role"], message["content"])
 
 typed_prompt = st.chat_input("Escreva uma pergunta geral...")
 suggestion_prompt = st.session_state.pop("suggestion_prompt", None)
 prompt = suggestion_prompt or typed_prompt
-
 if prompt:
+    user_message_index = len(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_current_conversation()
-
-    with st.chat_message("user", avatar="🙂"):
-        st.markdown(prompt)
+    render_chat_message("user", prompt)
 
     with st.chat_message("assistant", avatar="🌿"):
         with st.spinner("Preparando uma resposta..."):
