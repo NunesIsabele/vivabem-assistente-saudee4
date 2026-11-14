@@ -383,9 +383,9 @@ st.markdown(
     f"""
     <style>
     :root {{
-        --viva-native-bg: var(--background-color, var(--st-background-color, #FFFFFF));
-        --viva-native-panel: var(--secondary-background-color, var(--st-secondary-background-color, var(--background-color, #FFFFFF)));
-        --viva-native-text: var(--text-color, var(--st-text-color, #20372C));
+        --viva-native-bg: var(--st-background-color, var(--background-color, #FFFFFF));
+        --viva-native-panel: var(--st-secondary-background-color, var(--secondary-background-color, var(--st-background-color, #FFFFFF)));
+        --viva-native-text: var(--st-text-color, var(--text-color, #20372C));
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
@@ -410,9 +410,9 @@ st.markdown(
         --line-spacing: {line_spacing};
     }}
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        --viva-native-bg: var(--background-color, var(--st-background-color, #FFFFFF));
-        --viva-native-panel: var(--secondary-background-color, var(--st-secondary-background-color, var(--background-color, #FFFFFF)));
-        --viva-native-text: var(--text-color, var(--st-text-color, #20372C));
+        --viva-native-bg: var(--st-background-color, var(--background-color, #FFFFFF));
+        --viva-native-panel: var(--st-secondary-background-color, var(--secondary-background-color, var(--st-background-color, #FFFFFF)));
+        --viva-native-text: var(--st-text-color, var(--text-color, #20372C));
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         background: var(--page-bg);
