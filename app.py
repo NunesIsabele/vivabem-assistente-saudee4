@@ -274,14 +274,38 @@ with st.sidebar:
 if not st.session_state.messages:
     st.subheader("Quer uma ideia para começar?")
     suggestions = [
-        ("Alimentação e hidratação", "Quais hábitos gerais ajudam a manter uma alimentação variada e uma boa hidratação?"),
-        ("Atividade física", "Que hábitos gerais ajudam a incluir atividade física com segurança na rotina?"),
-        ("Sono e descanso", "Quais hábitos gerais podem ajudar a melhorar a rotina de sono e descanso?"),
+        {
+            "icon": "🥗",
+            "title": "Alimentação e hidratação",
+            "tip": "Pequenas escolhas e uma rotina de hidratação podem fazer parte do cuidado diário.",
+            "prompt": "Quais hábitos gerais ajudam a manter uma alimentação variada e uma boa hidratação?",
+        },
+        {
+            "icon": "🚶",
+            "title": "Atividade física",
+            "tip": "Movimentar o corpo de um jeito possível e agradável ajuda a construir uma rotina mais ativa.",
+            "prompt": "Que hábitos gerais ajudam a incluir atividade física com segurança na rotina?",
+        },
+        {
+            "icon": "🌙",
+            "title": "Sono e descanso",
+            "tip": "Horários regulares e um ambiente tranquilo podem apoiar uma rotina de descanso melhor.",
+            "prompt": "Quais hábitos gerais podem ajudar a melhorar a rotina de sono e descanso?",
+        },
     ]
-    for index, (label, question) in enumerate(suggestions):
-        if st.button(label, key=f"suggestion_{index}"):
-            st.session_state.suggestion_prompt = question
-            st.rerun()
+    suggestion_columns = st.columns(len(suggestions))
+    for index, (column, suggestion) in enumerate(zip(suggestion_columns, suggestions)):
+        with column:
+            with st.container(border=True):
+                st.markdown(f"### {suggestion['icon']} {suggestion['title']}")
+                st.write(suggestion["tip"])
+                if st.button(
+                    "Perguntar sobre isso",
+                    key=f"suggestion_{index}",
+                    use_container_width=True,
+                ):
+                    st.session_state.suggestion_prompt = suggestion["prompt"]
+                    st.rerun()
 
 
 def render_chat_message(message):
