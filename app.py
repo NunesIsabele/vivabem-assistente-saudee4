@@ -1,7 +1,7 @@
 """Interface do VivaBem com acessibilidade e sem busca automática na web."""
 
 import logging
-from copy import deep copy
+from copy import deepcopy
 from datetime import datetime
 from uuid import uuid4
 
