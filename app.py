@@ -201,7 +201,8 @@ def reset_accessibility_settings():
 
 with st.sidebar:
     st.markdown("## Acessibilidade")
-    st.caption("Personalize a aparência e a leitura do VivaBem.")
+    with st.container(key="viva_sidebar_accessibility_note"):
+        st.markdown("Personalize a aparência e a leitura do VivaBem.")
     st.checkbox("Ativar alto contraste", key="high_contrast")
     st.slider(
         "Tamanho do texto",
@@ -231,22 +232,26 @@ with st.sidebar:
 
     st.divider()
     st.markdown("### Sobre o VivaBem")
-    st.write("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
-    st.markdown("**Importante**")
-    st.markdown(
-        "**Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos.**\n\n"
-        "**Em uma emergência, procure imediatamente um serviço de saúde local.**"
-    )
-    st.markdown(
-        "**As conversas ficam salvas neste navegador.** Em computadores compartilhados, "
-        "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
-        "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
-    )
-    with st.expander("Fontes confiáveis de saúde"):
-        st.caption(
-            "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
-            "as respostas do Gemini podem não usar estes materiais."
+    with st.container(key="viva_sidebar_about_note"):
+        st.markdown("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
+    with st.container(key="viva_sidebar_safety_note"):
+        st.markdown(
+            "**Importante**\n\n"
+            "**Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos.**\n\n"
+            "**Em uma emergência, procure imediatamente um serviço de saúde local.**"
         )
+    with st.container(key="viva_sidebar_privacy_note"):
+        st.markdown(
+            "**As conversas ficam salvas neste navegador.** Em computadores compartilhados, "
+            "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
+            "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
+        )
+    with st.expander("Fontes confiáveis de saúde"):
+        with st.container(key="viva_sidebar_sources_note"):
+            st.markdown(
+                "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
+                "as respostas do Gemini podem não usar estes materiais."
+            )
         for title, url in HEALTH_REFERENCES:
             st.markdown(f"- [{title}]({url})")
 
@@ -327,6 +332,12 @@ if high_contrast:
     assistant_message_bg = "#000000"
     user_message_border = "#FFFF00"
     assistant_message_border = "#FFFFFF"
+    sidebar_safety_bg = "#000000"
+    sidebar_safety_border = "#FFFF00"
+    sidebar_privacy_bg = "#000000"
+    sidebar_privacy_border = "#FFFFFF"
+    sidebar_info_bg = "#000000"
+    sidebar_info_border = "#FFFFFF"
     text_color = "#FFFFFF"
     emphasis_color = "#FFFF00"
     muted_color = "#FFFFFF"
@@ -354,6 +365,12 @@ else:
     assistant_message_bg = "color-mix(in srgb, var(--secondary-background-color) 90%, #DCE7F5 10%)"
     user_message_border = "color-mix(in srgb, var(--border-color) 58%, #557B62 42%)"
     assistant_message_border = "var(--border-color)"
+    sidebar_safety_bg = "color-mix(in srgb, var(--secondary-background-color) 88%, #F2E5C4 12%)"
+    sidebar_safety_border = "color-mix(in srgb, var(--text-color) 22%, #B49C5B 78%)"
+    sidebar_privacy_bg = "color-mix(in srgb, var(--secondary-background-color) 86%, #CFE7D3 14%)"
+    sidebar_privacy_border = "color-mix(in srgb, var(--text-color) 20%, #6F997B 80%)"
+    sidebar_info_bg = "color-mix(in srgb, var(--secondary-background-color) 92%, #DCE7F5 8%)"
+    sidebar_info_border = "color-mix(in srgb, var(--text-color) 15%, #8DA7B7 85%)"
     text_color = "var(--text-color)"
     emphasis_color = "color-mix(in srgb, var(--text-color) 78%, #557B62 22%)"
     muted_color = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
@@ -417,6 +434,12 @@ st.markdown(
         --assistant-message-bg: {assistant_message_bg};
         --user-message-border: {user_message_border};
         --assistant-message-border: {assistant_message_border};
+        --sidebar-safety-bg: {sidebar_safety_bg};
+        --sidebar-safety-border: {sidebar_safety_border};
+        --sidebar-privacy-bg: {sidebar_privacy_bg};
+        --sidebar-privacy-border: {sidebar_privacy_border};
+        --sidebar-info-bg: {sidebar_info_bg};
+        --sidebar-info-border: {sidebar_info_border};
         --text-color: {text_color};
         --emphasis-color: {emphasis_color};
         --muted-color: {muted_color};
@@ -463,6 +486,32 @@ st.markdown(
     }}
     [data-testid="stHeader"] {{ background: var(--page-bg); }}
     [data-testid="stSidebar"] > div {{ background: var(--sidebar-bg); }}
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_accessibility_note"],
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_about_note"],
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_sources_note"] {{
+        background: var(--sidebar-info-bg) !important;
+        border: 1px solid var(--sidebar-info-border) !important;
+        border-left: 4px solid var(--sidebar-info-border) !important;
+        border-radius: 12px !important;
+        padding: .15rem .7rem !important;
+        margin: .35rem 0 .7rem !important;
+    }}
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_safety_note"] {{
+        background: var(--sidebar-safety-bg) !important;
+        border: 1px solid var(--sidebar-safety-border) !important;
+        border-left: 4px solid var(--sidebar-safety-border) !important;
+        border-radius: 13px !important;
+        padding: .2rem .7rem !important;
+        margin: .35rem 0 .7rem !important;
+    }}
+    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_privacy_note"] {{
+        background: var(--sidebar-privacy-bg) !important;
+        border: 1px solid var(--sidebar-privacy-border) !important;
+        border-left: 4px solid var(--sidebar-privacy-border) !important;
+        border-radius: 13px !important;
+        padding: .2rem .7rem !important;
+        margin: .35rem 0 .7rem !important;
+    }}
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
     [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
@@ -521,24 +570,36 @@ st.markdown(
         background: var(--message-bg) !important;
         border: 1px solid var(--border-color) !important;
     }}
+    [class*="st-key-viva_chat_user_"] {{
+        background: var(--user-message-bg) !important;
+        border: 1px solid var(--user-message-border) !important;
+        border-left: 5px solid var(--user-message-border) !important;
+        border-radius: 16px !important;
+        padding: .12rem .25rem !important;
+        margin: .45rem 0 .75rem !important;
+        box-shadow: 0 5px 16px rgba(30, 55, 65, .055) !important;
+    }}
+    [class*="st-key-viva_chat_assistant_"] {{
+        background: var(--assistant-message-bg) !important;
+        border: 1px solid var(--assistant-message-border) !important;
+        border-left: 5px solid var(--assistant-message-border) !important;
+        border-radius: 16px !important;
+        padding: .12rem .25rem !important;
+        margin: .45rem 0 .75rem !important;
+        box-shadow: 0 5px 16px rgba(30, 55, 65, .045) !important;
+    }}
+    [class*="st-key-viva_chat_user_"] [data-testid="stChatMessage"],
+    [class*="st-key-viva_chat_assistant_"] [data-testid="stChatMessage"] {{
+        background: transparent !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        padding: .65rem .8rem !important;
+        margin: 0 !important;
+        box-shadow: none !important;
+    }}
+    /* Fallback appearance while message content is nested in its keyed card. */
     [data-testid="stChatMessage"] {{
-        background: var(--assistant-message-bg);
-        border: 1px solid var(--assistant-message-border);
-        border-left: 4px solid var(--assistant-message-border);
-        border-radius: 16px;
-        padding: .8rem 1rem;
-        margin-bottom: .65rem;
-        box-shadow: 0 5px 16px rgba(30, 55, 65, .045);
-    }}
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
-        background: var(--user-message-bg);
-        border-color: var(--user-message-border);
-        border-left-color: var(--user-message-border);
-    }}
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
-        background: var(--assistant-message-bg);
-        border-color: var(--assistant-message-border);
-        border-left-color: var(--assistant-message-border);
+        min-width: 0;
     }}
     [data-testid="stChatInput"] textarea {{
         color: var(--text-color) !important;
@@ -707,36 +768,44 @@ if not st.session_state.messages:
                     st.session_state["suggestion_prompt"] = idea["prompt"]
                     st.rerun()
 
-for message in st.session_state.messages:
-    avatar = "🙂" if message["role"] == "user" else "🌿"
-    with st.chat_message(message["role"], avatar=avatar):
-        st.markdown(message["content"])
+def render_chat_message(role, content, index):
+    """Mostra cada fala dentro de um cartão com identidade de estilo estável."""
+    avatar = "🙂" if role == "user" else "🌿"
+    with st.container(key=f"viva_chat_{role}_{index}"):
+        with st.chat_message(role, avatar=avatar):
+            st.markdown(content)
+
+
+for message_index, message in enumerate(st.session_state.messages):
+    render_chat_message(message["role"], message["content"], message_index)
 
 typed_prompt = st.chat_input("Escreva uma pergunta geral...")
 suggestion_prompt = st.session_state.pop("suggestion_prompt", None)
 prompt = suggestion_prompt or typed_prompt
 if prompt:
+    user_message_index = len(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_current_conversation()
-    with st.chat_message("user", avatar="🙂"):
-        st.markdown(prompt)
+    render_chat_message("user", prompt, user_message_index)
 
-    with st.chat_message("assistant", avatar="🌿"):
-        with st.spinner("Preparando uma resposta..."):
-            try:
-                answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
-            except Exception:
-                logging.exception("Falha ao consultar o Gemini")
-                st.error(
-                    "Não consegui consultar o Gemini. Confira se a chave está "
-                    "configurada e tente novamente."
-                )
-            else:
-                st.markdown(answer)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": answer}
-                )
-                save_current_conversation()
+    assistant_message_index = len(st.session_state.messages)
+    with st.container(key=f"viva_chat_assistant_{assistant_message_index}"):
+        with st.chat_message("assistant", avatar="🌿"):
+            with st.spinner("Preparando uma resposta..."):
+                try:
+                    answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
+                except Exception:
+                    logging.exception("Falha ao consultar o Gemini")
+                    st.error(
+                        "Não consegui consultar o Gemini. Confira se a chave está "
+                        "configurada e tente novamente."
+                    )
+                else:
+                    st.markdown(answer)
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": answer}
+                    )
+                    save_current_conversation()
 
 
 # Mantém uma cópia persistente apenas no armazenamento deste navegador.
