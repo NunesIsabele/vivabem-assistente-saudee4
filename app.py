@@ -190,16 +190,8 @@ HEALTH_REFERENCES = [
     ),
 ]
 
-MESSAGE_COLORS = {
-    "Verde claro": "#CFE7D3",
-    "Azul claro": "#DCE7F5",
-    "Lavanda": "#E8DDF4",
-    "Pêssego": "#F4E1D2",
-    "Rosa suave": "#F2DDE5",
-    "Cinza suave": "#DCE2E6",
-}
-DEFAULT_USER_MESSAGE_COLOR = "Verde claro"
-DEFAULT_ASSISTANT_MESSAGE_COLOR = "Azul claro"
+DEFAULT_USER_MESSAGE_TINT = "#CFE7D3"
+DEFAULT_ASSISTANT_MESSAGE_TINT = "#DCE7F5"
 
 
 def blend_hex_colors(background, foreground, foreground_ratio):
@@ -219,8 +211,6 @@ def reset_accessibility_settings():
     st.session_state.font_scale = 100
     st.session_state.line_spacing = 1.6
     st.session_state.reduce_motion = True
-    st.session_state.user_message_color = DEFAULT_USER_MESSAGE_COLOR
-    st.session_state.assistant_message_color = DEFAULT_ASSISTANT_MESSAGE_COLOR
 
 
 with st.sidebar:
@@ -228,20 +218,6 @@ with st.sidebar:
     with st.container(key="viva_sidebar_accessibility_note"):
         st.markdown("Personalize a aparência e a leitura do VivaBem.")
     st.checkbox("Ativar alto contraste", key="high_contrast")
-    st.selectbox(
-        "Cor das suas mensagens",
-        options=list(MESSAGE_COLORS),
-        index=list(MESSAGE_COLORS).index(DEFAULT_USER_MESSAGE_COLOR),
-        key="user_message_color",
-        help="Escolha a cor das caixas com as mensagens que você envia.",
-    )
-    st.selectbox(
-        "Cor das respostas do VivaBem",
-        options=list(MESSAGE_COLORS),
-        index=list(MESSAGE_COLORS).index(DEFAULT_ASSISTANT_MESSAGE_COLOR),
-        key="assistant_message_color",
-        help="Escolha a cor das caixas com as respostas do protótipo.",
-    )
     st.slider(
         "Tamanho do texto",
         min_value=100,
@@ -349,14 +325,8 @@ high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
 reduce_motion = st.session_state.get("reduce_motion", True)
-user_message_tint = MESSAGE_COLORS.get(
-    st.session_state.get("user_message_color", DEFAULT_USER_MESSAGE_COLOR),
-    MESSAGE_COLORS[DEFAULT_USER_MESSAGE_COLOR],
-)
-assistant_message_tint = MESSAGE_COLORS.get(
-    st.session_state.get("assistant_message_color", DEFAULT_ASSISTANT_MESSAGE_COLOR),
-    MESSAGE_COLORS[DEFAULT_ASSISTANT_MESSAGE_COLOR],
-)
+user_message_tint = DEFAULT_USER_MESSAGE_TINT
+assistant_message_tint = DEFAULT_ASSISTANT_MESSAGE_TINT
 accent = "#557B62"
 
 if high_contrast:
@@ -507,7 +477,15 @@ st.markdown(
         background: color-mix(in srgb, var(--panel-bg) 92%, #D7EFE1 8%) !important;
         box-shadow: 0 5px 14px rgba(30, 55, 65, .08);
     }}
-    [data-testid="stHeader"] {{ background: var(--page-bg); }}
+    [data-testid="stHeader"] {{ background: var(--page-bg) !important; }}
+    [data-testid="stBottom"], [data-testid="stBottomBlockContainer"] {{
+        background: var(--page-bg) !important;
+        background-image: none !important;
+    }}
+    [data-testid="stBottom"]::before {{
+        background: var(--page-bg) !important;
+        background-image: none !important;
+    }}
     [data-testid="stSidebar"] > div {{ background: var(--sidebar-bg); }}
     [data-testid="stSidebar"] [class*="st-key-viva_sidebar_accessibility_note"],
     [data-testid="stSidebar"] [class*="st-key-viva_sidebar_about_note"],
