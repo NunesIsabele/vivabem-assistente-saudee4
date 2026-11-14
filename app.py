@@ -345,17 +345,6 @@ with st.sidebar:
             st.rerun()
 
 
-st.selectbox(
-    "Formato da tela",
-    ["Automático", "Celular", "Computador"],
-    key="device_mode",
-    help=(
-        "Automático se adapta à largura da janela. Celular usa uma composição "
-        "mais compacta. Computador usa mais espaço quando a tela é larga."
-    ),
-)
-st.markdown("**Você pode mudar esta opção a qualquer momento.**")
-
 high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
@@ -405,36 +394,36 @@ if high_contrast:
     ]
 else:
     # O Streamlit controla claro/escuro; as cores personalizadas se misturam ao tema ativo.
-    page_bg = "var(--background-color)"
-    panel_bg = "var(--secondary-background-color)"
-    secondary_bg = "var(--secondary-background-color)"
-    message_bg = "color-mix(in srgb, var(--secondary-background-color) 94%, var(--viva-accent-color) 6%)"
-    user_message_bg = f"color-mix(in srgb, var(--secondary-background-color) 66%, {user_message_tint} 34%)"
-    assistant_message_bg = f"color-mix(in srgb, var(--secondary-background-color) 66%, {assistant_message_tint} 34%)"
+    page_bg = "var(--viva-native-bg)"
+    panel_bg = "var(--viva-native-panel)"
+    secondary_bg = "var(--viva-native-panel)"
+    message_bg = "color-mix(in srgb, var(--viva-native-panel) 94%, var(--viva-accent-color) 6%)"
+    user_message_bg = f"color-mix(in srgb, var(--viva-native-panel) 66%, {user_message_tint} 34%)"
+    assistant_message_bg = f"color-mix(in srgb, var(--viva-native-panel) 66%, {assistant_message_tint} 34%)"
     user_message_border = f"color-mix(in srgb, var(--viva-border-color) 35%, {user_message_tint} 65%)"
     assistant_message_border = f"color-mix(in srgb, var(--viva-border-color) 35%, {assistant_message_tint} 65%)"
-    sidebar_safety_bg = "color-mix(in srgb, var(--secondary-background-color) 82%, #F2E5C4 18%)"
-    sidebar_safety_border = "color-mix(in srgb, var(--text-color) 22%, #B49C5B 78%)"
-    sidebar_privacy_bg = "color-mix(in srgb, var(--secondary-background-color) 82%, #CFE7D3 18%)"
-    sidebar_privacy_border = "color-mix(in srgb, var(--text-color) 20%, #6F997B 80%)"
-    sidebar_info_bg = "color-mix(in srgb, var(--secondary-background-color) 86%, #DCE7F5 14%)"
-    sidebar_info_border = "color-mix(in srgb, var(--text-color) 15%, #8DA7B7 85%)"
-    text_color = "var(--text-color)"
-    emphasis_color = "color-mix(in srgb, var(--text-color) 78%, #557B62 22%)"
-    muted_color = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
-    border_color = "color-mix(in srgb, var(--text-color) 18%, var(--background-color) 82%)"
-    sidebar_bg = "var(--secondary-background-color)"
-    sidebar_text = "var(--text-color)"
-    sidebar_muted = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
-    sidebar_control_bg = "var(--background-color)"
-    sidebar_control_text = "var(--text-color)"
-    sidebar_border = "color-mix(in srgb, var(--text-color) 20%, var(--background-color) 80%)"
-    notice_bg = "color-mix(in srgb, var(--secondary-background-color) 91%, #F2E5C4 9%)"
-    notice_text = "var(--text-color)"
+    sidebar_safety_bg = "color-mix(in srgb, var(--viva-native-panel) 82%, #F2E5C4 18%)"
+    sidebar_safety_border = "color-mix(in srgb, var(--viva-native-text) 22%, #B49C5B 78%)"
+    sidebar_privacy_bg = "color-mix(in srgb, var(--viva-native-panel) 82%, #CFE7D3 18%)"
+    sidebar_privacy_border = "color-mix(in srgb, var(--viva-native-text) 20%, #6F997B 80%)"
+    sidebar_info_bg = "color-mix(in srgb, var(--viva-native-panel) 86%, #DCE7F5 14%)"
+    sidebar_info_border = "color-mix(in srgb, var(--viva-native-text) 15%, #8DA7B7 85%)"
+    text_color = "var(--viva-native-text)"
+    emphasis_color = "color-mix(in srgb, var(--viva-native-text) 78%, #557B62 22%)"
+    muted_color = "color-mix(in srgb, var(--viva-native-text) 78%, var(--viva-native-bg) 22%)"
+    border_color = "color-mix(in srgb, var(--viva-native-text) 18%, var(--viva-native-bg) 82%)"
+    sidebar_bg = "var(--viva-native-panel)"
+    sidebar_text = "var(--viva-native-text)"
+    sidebar_muted = "color-mix(in srgb, var(--viva-native-text) 78%, var(--viva-native-bg) 22%)"
+    sidebar_control_bg = "var(--viva-native-bg)"
+    sidebar_control_text = "var(--viva-native-text)"
+    sidebar_border = "color-mix(in srgb, var(--viva-native-text) 20%, var(--viva-native-bg) 80%)"
+    notice_bg = "color-mix(in srgb, var(--viva-native-panel) 91%, #F2E5C4 9%)"
+    notice_text = "var(--viva-native-text)"
     tip_cards = [
-        ("color-mix(in srgb, var(--secondary-background-color) 90%, #D7EFE1 10%)", text_color, muted_color),
-        ("color-mix(in srgb, var(--secondary-background-color) 90%, #F4E4D3 10%)", text_color, muted_color),
-        ("color-mix(in srgb, var(--secondary-background-color) 90%, #DCE7F5 10%)", text_color, muted_color),
+        ("color-mix(in srgb, var(--viva-native-panel) 90%, #D7EFE1 10%)", text_color, muted_color),
+        ("color-mix(in srgb, var(--viva-native-panel) 90%, #F4E4D3 10%)", text_color, muted_color),
+        ("color-mix(in srgb, var(--viva-native-panel) 90%, #DCE7F5 10%)", text_color, muted_color),
     ]
 
 motion_css = (
@@ -444,37 +433,13 @@ motion_css = (
     else ""
 )
 
-device_mode = st.session_state.get("device_mode", "Automático")
-if device_mode == "Celular":
-    device_css = """
-    .block-container { max-width: 100% !important; padding: 1rem .75rem 6rem !important; }
-    [data-testid="stMain"] { min-width: 0 !important; }
-    [data-testid="stChatMessage"] { min-width: 0 !important; padding: .55rem .65rem !important; }
-    [data-testid="stChatMessageContent"], [data-testid="stMarkdownContainer"] {
-        min-width: 0 !important; max-width: 100% !important; overflow-wrap: anywhere !important;
-    }
-    .hero { padding: .9rem 1rem !important; border-radius: 14px !important; }
-    .hero h1 { font-size: calc(1.6rem * var(--font-scale)) !important; }
-    .hero p { font-size: calc(.95rem * var(--font-scale)) !important; }
-    .notice { padding: .7rem .8rem !important; }
-    [data-testid="stChatInput"] { width: 100% !important; max-width: 100% !important; }
-    [data-testid="stSidebarContent"] { max-height: 100dvh !important; overflow-y: auto !important; }
-    """
-elif device_mode == "Computador":
-    device_css = """
-    @media (min-width: 769px) {
-        .block-container { max-width: 1180px !important; padding-left: 2rem !important; padding-right: 2rem !important; }
-        .hero { padding: 1.8rem 2rem !important; }
-        [data-testid="stChatMessage"] { padding: .9rem 1.1rem !important; }
-    }
-    """
-else:
-    device_css = ""
-
 st.markdown(
     f"""
     <style>
     :root {{
+        --viva-native-bg: var(--background-color, var(--st-background-color, #FFFFFF));
+        --viva-native-panel: var(--secondary-background-color, var(--st-secondary-background-color, var(--background-color, #FFFFFF)));
+        --viva-native-text: var(--text-color, var(--st-text-color, #20372C));
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
@@ -503,6 +468,11 @@ st.markdown(
         --line-spacing: {line_spacing};
     }}
     .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
+        --viva-native-bg: var(--background-color, var(--st-background-color, #FFFFFF));
+        --viva-native-panel: var(--secondary-background-color, var(--st-secondary-background-color, var(--background-color, #FFFFFF)));
+        --viva-native-text: var(--text-color, var(--st-text-color, #20372C));
+        --page-bg: {page_bg};
+        --panel-bg: {panel_bg};
         background: var(--page-bg);
         color: var(--viva-text-color);
         font-size: calc(16px * var(--font-scale));
@@ -748,7 +718,6 @@ st.markdown(
         [data-testid="stChatMessage"] {{ padding: .5rem .55rem !important; }}
         .hero h1 {{ font-size: calc(1.5rem * var(--font-scale)) !important; }}
     }}
-    {device_css}
     {motion_css}
     </style>
     <div class="hero">
