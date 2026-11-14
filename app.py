@@ -200,11 +200,26 @@ MESSAGE_COLORS = {
 }
 DEFAULT_USER_MESSAGE_COLOR = "Verde claro"
 DEFAULT_ASSISTANT_MESSAGE_COLOR = "Azul claro"
+THEME_OPTIONS = ["Claro", "Escuro", "Alto contraste"]
+DEFAULT_THEME = "Claro"
+
+
+def blend_hex_colors(background, foreground, foreground_ratio):
+    """Mistura duas cores HEX sem depender de suporte CSS do navegador."""
+    background = background.lstrip("#")
+    foreground = foreground.lstrip("#")
+    ratio = max(0.0, min(1.0, foreground_ratio))
+    channels = [
+        round(int(background[index:index + 2], 16) * (1 - ratio)
+              + int(foreground[index:index + 2], 16) * ratio)
+        for index in (0, 2, 4)
+    ]
+    return "#" + "".join(f"{channel:02X}" for channel in channels)
 
 
 def reset_accessibility_settings():
     """Restaura os valores iniciais dos controles de acessibilidade."""
-    st.session_state.high_contrast = False
+    st.session_state.theme_mode = DEFAULT_THEME
     st.session_state.font_scale = 100
     st.session_state.line_spacing = 1.6
     st.session_state.reduce_motion = True
@@ -216,14 +231,18 @@ with st.sidebar:
     st.markdown("## Acessibilidade")
     with st.container(key="viva_sidebar_accessibility_note"):
         st.markdown("Personalize a aparência e a leitura do VivaBem.")
-    st.checkbox("Ativar alto contraste", key="high_contrast")
-    contrast_enabled = st.session_state.get("high_contrast", False)
+    st.selectbox(
+        "Tema do VivaBem",
+        options=THEME_OPTIONS,
+        index=THEME_OPTIONS.index(DEFAULT_THEME),
+        key="theme_mode",
+        help="A escolha muda junto o fundo, os textos, os controles e as caixas de conversa.",
+    )
     st.selectbox(
         "Cor das suas mensagens",
         options=list(MESSAGE_COLORS),
         index=list(MESSAGE_COLORS).index(DEFAULT_USER_MESSAGE_COLOR),
         key="user_message_color",
-        disabled=contrast_enabled,
         help="Escolha a cor das caixas com as mensagens que você envia.",
     )
     st.selectbox(
@@ -231,11 +250,8 @@ with st.sidebar:
         options=list(MESSAGE_COLORS),
         index=list(MESSAGE_COLORS).index(DEFAULT_ASSISTANT_MESSAGE_COLOR),
         key="assistant_message_color",
-        disabled=contrast_enabled,
         help="Escolha a cor das caixas com as respostas do protótipo.",
     )
-    if contrast_enabled:
-        st.caption("No alto contraste, usamos preto e bordas fortes para priorizar a leitura.")
     st.slider(
         "Tamanho do texto",
         min_value=100,
@@ -350,7 +366,8 @@ st.selectbox(
 )
 st.markdown("**Você pode mudar esta opção a qualquer momento.**")
 
-high_contrast = st.session_state.get("high_contrast", False)
+theme_mode = st.session_state.get("theme_mode", DEFAULT_THEME)
+high_contrast = theme_mode == "Alto contraste"
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
 reduce_motion = st.session_state.get("reduce_motion", True)
@@ -366,23 +383,24 @@ accent = "#557B62"
 
 if high_contrast:
     page_bg = "#000000"
-    panel_bg = "#0B0B0B"
-    message_bg = "#111111"
-    user_message_bg = "#000000"
-    assistant_message_bg = "#000000"
+    panel_bg = "#101010"
+    secondary_bg = "#101010"
+    text_color = "#FFFFFF"
+    muted_color = "#FFFFFF"
+    border_color = "#FFFFFF"
+    emphasis_color = "#FFFF00"
+    accent = "#FFFF00"
+    user_message_bg = blend_hex_colors("#000000", user_message_tint, 0.24)
+    assistant_message_bg = blend_hex_colors("#000000", assistant_message_tint, 0.24)
     user_message_border = "#FFFF00"
     assistant_message_border = "#FFFFFF"
+    message_bg = "#101010"
     sidebar_safety_bg = "#000000"
     sidebar_safety_border = "#FFFF00"
     sidebar_privacy_bg = "#000000"
     sidebar_privacy_border = "#FFFFFF"
     sidebar_info_bg = "#000000"
     sidebar_info_border = "#FFFFFF"
-    text_color = "#FFFFFF"
-    emphasis_color = "#FFFF00"
-    muted_color = "#FFFFFF"
-    border_color = "#FFFFFF"
-    accent = "#FFFF00"
     sidebar_bg = "#000000"
     sidebar_text = "#FFFFFF"
     sidebar_muted = "#FFFFFF"
@@ -397,38 +415,39 @@ if high_contrast:
         ("#000000", "#FFFFFF", "#FFFFFF"),
     ]
 else:
-    # Estes valores acompanham o tema nativo selecionado no menu do Streamlit.
-    page_bg = "var(--background-color)"
-    panel_bg = "var(--secondary-background-color)"
-    message_bg = "color-mix(in srgb, var(--secondary-background-color) 94%, var(--accent-color) 6%)"
-    user_message_bg = (
-        f"color-mix(in srgb, var(--secondary-background-color) 66%, "
-        f"{user_message_tint} 34%)"
-    )
-    assistant_message_bg = (
-        f"color-mix(in srgb, var(--secondary-background-color) 66%, "
-        f"{assistant_message_tint} 34%)"
-    )
-    user_message_border = f"color-mix(in srgb, var(--border-color) 35%, {user_message_tint} 65%)"
-    assistant_message_border = f"color-mix(in srgb, var(--border-color) 35%, {assistant_message_tint} 65%)"
-    sidebar_safety_bg = "color-mix(in srgb, var(--secondary-background-color) 82%, #F2E5C4 18%)"
-    sidebar_safety_border = "color-mix(in srgb, var(--text-color) 22%, #B49C5B 78%)"
-    sidebar_privacy_bg = "color-mix(in srgb, var(--secondary-background-color) 82%, #CFE7D3 18%)"
-    sidebar_privacy_border = "color-mix(in srgb, var(--text-color) 20%, #6F997B 80%)"
-    sidebar_info_bg = "color-mix(in srgb, var(--secondary-background-color) 86%, #DCE7F5 14%)"
-    sidebar_info_border = "color-mix(in srgb, var(--text-color) 15%, #8DA7B7 85%)"
-    text_color = "var(--text-color)"
-    emphasis_color = "color-mix(in srgb, var(--text-color) 78%, #557B62 22%)"
-    muted_color = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
-    border_color = "color-mix(in srgb, var(--text-color) 18%, var(--background-color) 82%)"
-    sidebar_bg = "var(--secondary-background-color)"
-    sidebar_text = "var(--text-color)"
-    sidebar_muted = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
-    sidebar_control_bg = "var(--background-color)"
-    sidebar_control_text = "var(--text-color)"
-    sidebar_border = "color-mix(in srgb, var(--text-color) 20%, var(--background-color) 80%)"
-    notice_bg = "color-mix(in srgb, var(--secondary-background-color) 91%, #F2E5C4 9%)"
-    notice_text = "var(--text-color)"
+    # O tema escolhido controla também as variáveis visuais usadas pelo Streamlit.
+    if theme_mode == "Escuro":
+        page_bg, panel_bg, secondary_bg = "#121915", "#1B2520", "#202B25"
+        text_color, muted_color = "#E8F0EA", "#B7C7BD"
+        border_color, emphasis_color, accent = "#3A4A40", "#C5E0CD", "#9BCBAB"
+        sidebar_safety_tint, sidebar_privacy_tint, sidebar_info_tint = "#E7D59E", "#9BCBAB", "#AFC9DB"
+        notice_tint = "#E7D59E"
+    else:
+        page_bg, panel_bg, secondary_bg = "#F4F8F5", "#FFFFFF", "#EDF3EF"
+        text_color, muted_color = "#20372C", "#53685B"
+        border_color, emphasis_color, accent = "#D6E2D9", "#355A42", "#557B62"
+        sidebar_safety_tint, sidebar_privacy_tint, sidebar_info_tint = "#B49C5B", "#6F997B", "#8DA7B7"
+        notice_tint = "#B49C5B"
+
+    message_bg = blend_hex_colors(secondary_bg, accent, 0.06)
+    user_message_bg = blend_hex_colors(secondary_bg, user_message_tint, 0.34)
+    assistant_message_bg = blend_hex_colors(secondary_bg, assistant_message_tint, 0.34)
+    user_message_border = blend_hex_colors(border_color, user_message_tint, 0.65)
+    assistant_message_border = blend_hex_colors(border_color, assistant_message_tint, 0.65)
+    sidebar_safety_bg = blend_hex_colors(secondary_bg, "#F2E5C4", 0.18)
+    sidebar_safety_border = sidebar_safety_tint
+    sidebar_privacy_bg = blend_hex_colors(secondary_bg, "#CFE7D3", 0.18)
+    sidebar_privacy_border = sidebar_privacy_tint
+    sidebar_info_bg = blend_hex_colors(secondary_bg, "#DCE7F5", 0.14)
+    sidebar_info_border = sidebar_info_tint
+    sidebar_bg = secondary_bg
+    sidebar_text = text_color
+    sidebar_muted = muted_color
+    sidebar_control_bg = panel_bg
+    sidebar_control_text = text_color
+    sidebar_border = border_color
+    notice_bg = blend_hex_colors(secondary_bg, "#F2E5C4", 0.09)
+    notice_text = text_color
     tip_cards = [
         ("color-mix(in srgb, var(--secondary-background-color) 90%, #D7EFE1 10%)", text_color, muted_color),
         ("color-mix(in srgb, var(--secondary-background-color) 90%, #F4E4D3 10%)", text_color, muted_color),
@@ -473,6 +492,16 @@ st.markdown(
     f"""
     <style>
     :root {{
+        /* Estas variáveis são a fonte única do tema para o app e os widgets Streamlit. */
+        --background-color: {page_bg} !important;
+        --secondary-background-color: {secondary_bg} !important;
+        --text-color: {text_color} !important;
+        --primary-color: {accent} !important;
+        --st-background-color: {page_bg} !important;
+        --st-secondary-background-color: {secondary_bg} !important;
+        --st-text-color: {text_color} !important;
+        --st-primary-color: {accent} !important;
+        color-scheme: {"dark" if theme_mode == "Escuro" or high_contrast else "light"};
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
@@ -505,6 +534,11 @@ st.markdown(
         color: var(--text-color);
         font-size: calc(16px * var(--font-scale));
     }}
+    html, body, [data-testid="stApp"] {{
+        background: var(--page-bg) !important;
+        color: var(--text-color) !important;
+    }}
+    input[type="checkbox"], input[type="radio"] {{ accent-color: var(--primary-color) !important; }}
     .tip-card {{
         min-height: 150px;
         padding: 1.15rem;
