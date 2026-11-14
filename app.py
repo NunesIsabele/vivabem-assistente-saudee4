@@ -317,13 +317,14 @@ high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
 reduce_motion = st.session_state.get("reduce_motion", True)
-accent = "var(--primary-color)"
+accent = "#557B62"
 
 if high_contrast:
     page_bg = "#000000"
     panel_bg = "#0B0B0B"
     message_bg = "#111111"
     text_color = "#FFFFFF"
+    emphasis_color = "#FFFF00"
     muted_color = "#FFFFFF"
     border_color = "#FFFFFF"
     accent = "#FFFF00"
@@ -344,8 +345,9 @@ else:
     # Estes valores acompanham o tema nativo selecionado no menu do Streamlit.
     page_bg = "var(--background-color)"
     panel_bg = "var(--secondary-background-color)"
-    message_bg = "color-mix(in srgb, var(--secondary-background-color) 94%, var(--primary-color) 6%)"
+    message_bg = "color-mix(in srgb, var(--secondary-background-color) 94%, var(--accent-color) 6%)"
     text_color = "var(--text-color)"
+    emphasis_color = "color-mix(in srgb, var(--text-color) 78%, #557B62 22%)"
     muted_color = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
     border_color = "color-mix(in srgb, var(--text-color) 18%, var(--background-color) 82%)"
     sidebar_bg = "var(--secondary-background-color)"
@@ -404,6 +406,7 @@ st.markdown(
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
         --text-color: {text_color};
+        --emphasis-color: {emphasis_color};
         --muted-color: {muted_color};
         --border-color: {border_color};
         --accent-color: {accent};
@@ -435,10 +438,15 @@ st.markdown(
     .tip-card p {{ margin: 0; font-size: .92rem; }}
     .stButton > button {{
         border-radius: 12px !important;
+        color: var(--accent-color) !important;
+        background: var(--panel-bg) !important;
+        border-color: color-mix(in srgb, var(--accent-color) 38%, var(--border-color)) !important;
         transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
     }}
     .stButton > button:hover {{
         transform: translateY(-1px);
+        border-color: var(--accent-color) !important;
+        background: color-mix(in srgb, var(--panel-bg) 92%, #D7EFE1 8%) !important;
         box-shadow: 0 5px 14px rgba(30, 55, 65, .08);
     }}
     [data-testid="stHeader"] {{ background: var(--page-bg); }}
@@ -488,6 +496,14 @@ st.markdown(
     [data-testid="stMarkdownContainer"] a {{
         color: var(--accent-color) !important;
         text-decoration: underline !important;
+    }}
+    [data-testid="stMarkdownContainer"] strong,
+    [data-testid="stChatMessageContent"] strong,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3,
+    .hero h1, .tip-card strong, .notice strong {{
+        color: var(--emphasis-color) !important;
+        font-weight: 700 !important;
     }}
     [data-testid="stAlert"] {{
         background: var(--message-bg) !important;
