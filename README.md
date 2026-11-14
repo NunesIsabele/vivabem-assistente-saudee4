@@ -22,7 +22,7 @@ O usuário pode deixar a busca atual na web desligada ou ativá-la para uma resp
 
 ## Publicação no Streamlit Community Cloud
 
-O `app.py` pode ser publicado a partir de um repositório GitHub. Configure `GEMINI_API_KEY` na área **Secrets** das configurações avançadas de publicação. Nunca envie o arquivo `.env` ao GitHub. Um aplicativo publicado pode ser acessado pelo público e as mensagens enviadas são processadas pelo Gemini; não informe dados pessoais ou informações reais de saúde. O uso do aplicativo também pode consumir a cota da chave configurada.
+O `app.py` pode ser publicado a partir de um repositório GitHub. Configure `GEMINI_API_KEY` na área **Secrets** das configurações avançadas de publicação. Um aplicativo publicado pode ser acessado pelo público e as mensagens enviadas são processadas pelo Gemini; não informe dados pessoais ou informações reais de saúde. O uso do aplicativo também pode consumir a cota da chave configurada.
 
 ## Configuração
 
