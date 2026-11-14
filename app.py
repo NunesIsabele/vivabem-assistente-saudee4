@@ -233,12 +233,12 @@ with st.sidebar:
     st.markdown("### Sobre o VivaBem")
     st.write("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
     st.markdown("**Importante**")
-    st.caption(
-        "Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos. "
-        "Em uma emergência, procure imediatamente um serviço de saúde local."
+    st.markdown(
+        "**Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos.**\n\n"
+        "**Em uma emergência, procure imediatamente um serviço de saúde local.**"
     )
-    st.caption(
-        "As conversas ficam salvas neste navegador. Em computadores compartilhados, "
+    st.markdown(
+        "**As conversas ficam salvas neste navegador.** Em computadores compartilhados, "
         "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
         "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
     )
@@ -311,7 +311,7 @@ st.selectbox(
         "mais compacta. Computador usa mais espaço quando a tela é larga."
     ),
 )
-st.caption("Você pode mudar esta opção a qualquer momento.")
+st.markdown("**Você pode mudar esta opção a qualquer momento.**")
 
 high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
@@ -323,6 +323,10 @@ if high_contrast:
     page_bg = "#000000"
     panel_bg = "#0B0B0B"
     message_bg = "#111111"
+    user_message_bg = "#000000"
+    assistant_message_bg = "#000000"
+    user_message_border = "#FFFF00"
+    assistant_message_border = "#FFFFFF"
     text_color = "#FFFFFF"
     emphasis_color = "#FFFF00"
     muted_color = "#FFFFFF"
@@ -346,6 +350,10 @@ else:
     page_bg = "var(--background-color)"
     panel_bg = "var(--secondary-background-color)"
     message_bg = "color-mix(in srgb, var(--secondary-background-color) 94%, var(--accent-color) 6%)"
+    user_message_bg = "color-mix(in srgb, var(--secondary-background-color) 84%, #CFE7D3 16%)"
+    assistant_message_bg = "color-mix(in srgb, var(--secondary-background-color) 90%, #DCE7F5 10%)"
+    user_message_border = "color-mix(in srgb, var(--border-color) 58%, #557B62 42%)"
+    assistant_message_border = "var(--border-color)"
     text_color = "var(--text-color)"
     emphasis_color = "color-mix(in srgb, var(--text-color) 78%, #557B62 22%)"
     muted_color = "color-mix(in srgb, var(--text-color) 78%, var(--background-color) 22%)"
@@ -405,6 +413,10 @@ st.markdown(
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
+        --user-message-bg: {user_message_bg};
+        --assistant-message-bg: {assistant_message_bg};
+        --user-message-border: {user_message_border};
+        --assistant-message-border: {assistant_message_border};
         --text-color: {text_color};
         --emphasis-color: {emphasis_color};
         --muted-color: {muted_color};
@@ -510,10 +522,23 @@ st.markdown(
         border: 1px solid var(--border-color) !important;
     }}
     [data-testid="stChatMessage"] {{
-        background: var(--message-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 14px;
-        padding: .7rem .9rem;
+        background: var(--assistant-message-bg);
+        border: 1px solid var(--assistant-message-border);
+        border-left: 4px solid var(--assistant-message-border);
+        border-radius: 16px;
+        padding: .8rem 1rem;
+        margin-bottom: .65rem;
+        box-shadow: 0 5px 16px rgba(30, 55, 65, .045);
+    }}
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
+        background: var(--user-message-bg);
+        border-color: var(--user-message-border);
+        border-left-color: var(--user-message-border);
+    }}
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
+        background: var(--assistant-message-bg);
+        border-color: var(--assistant-message-border);
+        border-left-color: var(--assistant-message-border);
     }}
     [data-testid="stChatInput"] textarea {{
         color: var(--text-color) !important;
@@ -639,7 +664,7 @@ st.markdown(
 if not st.session_state.messages:
     st.info("Olá! Você pode perguntar sobre hábitos gerais de prevenção e bem-estar.")
     st.markdown("### Quer uma ideia para começar?")
-    st.caption("Escolha um tema para enviar uma pergunta geral ao VivaBem.")
+    st.markdown("**Escolha um tema para enviar uma pergunta geral ao VivaBem.**")
 
     tip_ideas = [
         {
