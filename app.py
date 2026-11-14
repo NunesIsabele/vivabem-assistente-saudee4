@@ -570,36 +570,25 @@ st.markdown(
         background: var(--message-bg) !important;
         border: 1px solid var(--border-color) !important;
     }}
-    [class*="st-key-viva_chat_user_"] {{
-        background: var(--user-message-bg) !important;
-        border: 1px solid var(--user-message-border) !important;
-        border-left: 5px solid var(--user-message-border) !important;
-        border-radius: 16px !important;
-        padding: .12rem .25rem !important;
-        margin: .45rem 0 .75rem !important;
-        box-shadow: 0 5px 16px rgba(30, 55, 65, .055) !important;
-    }}
-    [class*="st-key-viva_chat_assistant_"] {{
+    [data-testid="stChatMessage"] {{
+        min-width: 0 !important;
         background: var(--assistant-message-bg) !important;
         border: 1px solid var(--assistant-message-border) !important;
         border-left: 5px solid var(--assistant-message-border) !important;
         border-radius: 16px !important;
-        padding: .12rem .25rem !important;
+        padding: .8rem 1rem !important;
         margin: .45rem 0 .75rem !important;
-        box-shadow: 0 5px 16px rgba(30, 55, 65, .045) !important;
+        box-shadow: 0 5px 16px rgba(30, 55, 65, .05) !important;
     }}
-    [class*="st-key-viva_chat_user_"] [data-testid="stChatMessage"],
-    [class*="st-key-viva_chat_assistant_"] [data-testid="stChatMessage"] {{
-        background: transparent !important;
-        border: 0 !important;
-        border-radius: 0 !important;
-        padding: .65rem .8rem !important;
-        margin: 0 !important;
-        box-shadow: none !important;
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
+        background: var(--user-message-bg) !important;
+        border-color: var(--user-message-border) !important;
+        border-left-color: var(--user-message-border) !important;
     }}
-    /* Fallback appearance while message content is nested in its keyed card. */
-    [data-testid="stChatMessage"] {{
-        min-width: 0;
+    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
+        background: var(--assistant-message-bg) !important;
+        border-color: var(--assistant-message-border) !important;
+        border-left-color: var(--assistant-message-border) !important;
     }}
     [data-testid="stChatInput"] textarea {{
         color: var(--text-color) !important;
@@ -768,16 +757,15 @@ if not st.session_state.messages:
                     st.session_state["suggestion_prompt"] = idea["prompt"]
                     st.rerun()
 
-def render_chat_message(role, content, index):
-    """Mostra cada fala dentro de um cartão com identidade de estilo estável."""
+def render_chat_message(role, content):
+    """Mostra a fala; o CSS aplica a caixa diretamente ao st.chat_message."""
     avatar = "🙂" if role == "user" else "🌿"
-    with st.container(key=f"viva_chat_{role}_{index}"):
-        with st.chat_message(role, avatar=avatar):
-            st.markdown(content)
+    with st.chat_message(role, avatar=avatar):
+        st.markdown(content)
 
 
-for message_index, message in enumerate(st.session_state.messages):
-    render_chat_message(message["role"], message["content"], message_index)
+for message in st.session_state.messages:
+    render_chat_message(message["role"], message["content"])
 
 typed_prompt = st.chat_input("Escreva uma pergunta geral...")
 suggestion_prompt = st.session_state.pop("suggestion_prompt", None)
@@ -786,26 +774,24 @@ if prompt:
     user_message_index = len(st.session_state.messages)
     st.session_state.messages.append({"role": "user", "content": prompt})
     save_current_conversation()
-    render_chat_message("user", prompt, user_message_index)
+    render_chat_message("user", prompt)
 
-    assistant_message_index = len(st.session_state.messages)
-    with st.container(key=f"viva_chat_assistant_{assistant_message_index}"):
-        with st.chat_message("assistant", avatar="🌿"):
-            with st.spinner("Preparando uma resposta..."):
-                try:
-                    answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
-                except Exception:
-                    logging.exception("Falha ao consultar o Gemini")
-                    st.error(
-                        "Não consegui consultar o Gemini. Confira se a chave está "
-                        "configurada e tente novamente."
-                    )
-                else:
-                    st.markdown(answer)
-                    st.session_state.messages.append(
-                        {"role": "assistant", "content": answer}
-                    )
-                    save_current_conversation()
+    with st.chat_message("assistant", avatar="🌿"):
+        with st.spinner("Preparando uma resposta..."):
+            try:
+                answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
+            except Exception:
+                logging.exception("Falha ao consultar o Gemini")
+                st.error(
+                    "Não consegui consultar o Gemini. Confira se a chave está "
+                    "configurada e tente novamente."
+                )
+            else:
+                st.markdown(answer)
+                st.session_state.messages.append(
+                    {"role": "assistant", "content": answer}
+                )
+                save_current_conversation()
 
 
 # Mantém uma cópia persistente apenas no armazenamento deste navegador.
