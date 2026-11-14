@@ -197,6 +197,11 @@ def start_new_conversation():
     st.session_state.messages = []
 
 
+def reset_text_accessibility():
+    st.session_state.font_scale = 100
+    st.session_state.line_spacing = 1.6
+
+
 st.title("🌿 VivaBem")
 st.caption("Informações gerais sobre prevenção e hábitos saudáveis.")
 st.info(
@@ -206,6 +211,29 @@ st.info(
 )
 
 with st.sidebar:
+    st.header("Acessibilidade")
+    st.slider(
+        "Tamanho da letra",
+        min_value=100,
+        max_value=150,
+        value=100,
+        step=10,
+        format="%d%%",
+        key="font_scale",
+        help="Ajusta o tamanho do texto do aplicativo.",
+    )
+    st.slider(
+        "Espaçamento entre linhas",
+        min_value=1.2,
+        max_value=2.0,
+        value=1.6,
+        step=0.1,
+        key="line_spacing",
+        help="Ajusta a distância entre as linhas do texto.",
+    )
+    st.button("Restaurar texto padrão", on_click=reset_text_accessibility)
+    st.divider()
+
     st.header("Sobre o VivaBem")
     st.write("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
     st.write(
@@ -271,6 +299,31 @@ with st.sidebar:
             st.rerun()
 
 
+font_scale = st.session_state.get("font_scale", 100) / 100
+line_spacing = st.session_state.get("line_spacing", 1.6)
+st.markdown(
+    f"""
+    <style>
+    [data-testid="stAppViewContainer"] [data-testid="stMarkdownContainer"],
+    [data-testid="stAppViewContainer"] [data-testid="stMarkdownContainer"] *,
+    [data-testid="stAppViewContainer"] [data-testid="stChatMessageContent"],
+    [data-testid="stAppViewContainer"] [data-testid="stChatMessageContent"] *,
+    [data-testid="stAppViewContainer"] [data-testid="stWidgetLabel"],
+    [data-testid="stAppViewContainer"] [data-testid="stCaptionContainer"],
+    [data-testid="stAppViewContainer"] [data-testid="stChatInput"] textarea,
+    [data-testid="stAppViewContainer"] button,
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"],
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
+    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] * {{
+        font-size: calc(1rem * {font_scale}) !important;
+        line-height: {line_spacing} !important;
+    }}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
 if not st.session_state.messages:
     st.subheader("Quer uma ideia para começar?")
     suggestions = [
@@ -296,7 +349,11 @@ if not st.session_state.messages:
     suggestion_columns = st.columns(len(suggestions))
     for index, (column, suggestion) in enumerate(zip(suggestion_columns, suggestions)):
         with column:
-            with st.container(border=True):
+            with st.container(
+                height=300,
+                border=True,
+                vertical_alignment="distribute",
+            ):
                 st.markdown(f"### {suggestion['icon']} {suggestion['title']}")
                 st.write(suggestion["tip"])
                 if st.button(
