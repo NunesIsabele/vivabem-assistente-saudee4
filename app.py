@@ -190,21 +190,7 @@ HEALTH_REFERENCES = [
     ),
 ]
 
-DEFAULT_USER_MESSAGE_TINT = "#CFE7D3"
-DEFAULT_ASSISTANT_MESSAGE_TINT = "#DCE7F5"
 
-
-def blend_hex_colors(background, foreground, foreground_ratio):
-    """Mistura duas cores HEX sem depender de suporte CSS do navegador."""
-    background = background.lstrip("#")
-    foreground = foreground.lstrip("#")
-    ratio = max(0.0, min(1.0, foreground_ratio))
-    channels = [
-        round(int(background[index:index + 2], 16) * (1 - ratio)
-              + int(foreground[index:index + 2], 16) * ratio)
-        for index in (0, 2, 4)
-    ]
-    return "#" + "".join(f"{channel:02X}" for channel in channels)
 def reset_accessibility_settings():
     """Restaura os valores iniciais dos controles de acessibilidade."""
     st.session_state.high_contrast = False
@@ -325,8 +311,6 @@ high_contrast = st.session_state.get("high_contrast", False)
 font_scale = st.session_state.get("font_scale", 100) / 100
 line_spacing = st.session_state.get("line_spacing", 1.6)
 reduce_motion = st.session_state.get("reduce_motion", True)
-user_message_tint = DEFAULT_USER_MESSAGE_TINT
-assistant_message_tint = DEFAULT_ASSISTANT_MESSAGE_TINT
 accent = "#557B62"
 
 if high_contrast:
@@ -338,10 +322,6 @@ if high_contrast:
     border_color = "#FFFFFF"
     emphasis_color = "#FFFF00"
     accent = "#FFFF00"
-    user_message_bg = blend_hex_colors("#000000", user_message_tint, 0.24)
-    assistant_message_bg = blend_hex_colors("#000000", assistant_message_tint, 0.24)
-    user_message_border = "#FFFF00"
-    assistant_message_border = "#FFFFFF"
     message_bg = "#101010"
     sidebar_safety_bg = "#000000"
     sidebar_safety_border = "#FFFF00"
@@ -368,10 +348,6 @@ else:
     panel_bg = "var(--viva-native-panel)"
     secondary_bg = "var(--viva-native-panel)"
     message_bg = "color-mix(in srgb, var(--viva-native-panel) 94%, var(--viva-accent-color) 6%)"
-    user_message_bg = f"color-mix(in srgb, var(--viva-native-panel) 66%, {user_message_tint} 34%)"
-    assistant_message_bg = f"color-mix(in srgb, var(--viva-native-panel) 66%, {assistant_message_tint} 34%)"
-    user_message_border = f"color-mix(in srgb, var(--viva-border-color) 35%, {user_message_tint} 65%)"
-    assistant_message_border = f"color-mix(in srgb, var(--viva-border-color) 35%, {assistant_message_tint} 65%)"
     sidebar_safety_bg = "color-mix(in srgb, var(--viva-native-panel) 82%, #F2E5C4 18%)"
     sidebar_safety_border = "color-mix(in srgb, var(--viva-native-text) 22%, #B49C5B 78%)"
     sidebar_privacy_bg = "color-mix(in srgb, var(--viva-native-panel) 82%, #CFE7D3 18%)"
@@ -413,10 +389,6 @@ st.markdown(
         --page-bg: {page_bg};
         --panel-bg: {panel_bg};
         --message-bg: {message_bg};
-        --user-message-bg: {user_message_bg};
-        --assistant-message-bg: {assistant_message_bg};
-        --user-message-border: {user_message_border};
-        --assistant-message-border: {assistant_message_border};
         --sidebar-safety-bg: {sidebar_safety_bg};
         --sidebar-safety-border: {sidebar_safety_border};
         --sidebar-privacy-bg: {sidebar_privacy_bg};
@@ -571,26 +543,7 @@ st.markdown(
         background: var(--message-bg) !important;
         border: 1px solid var(--viva-border-color) !important;
     }}
-    [data-testid="stChatMessage"] {{
-        min-width: 0 !important;
-        background: var(--assistant-message-bg) !important;
-        border: 1px solid var(--assistant-message-border) !important;
-        border-left: 5px solid var(--assistant-message-border) !important;
-        border-radius: 16px !important;
-        padding: .8rem 1rem !important;
-        margin: .45rem 0 .75rem !important;
-        box-shadow: 0 5px 16px rgba(30, 55, 65, .05) !important;
-    }}
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-user"]) {{
-        background: var(--user-message-bg) !important;
-        border-color: var(--user-message-border) !important;
-        border-left-color: var(--user-message-border) !important;
-    }}
-    [data-testid="stChatMessage"]:has([data-testid="chatAvatarIcon-assistant"]) {{
-        background: var(--assistant-message-bg) !important;
-        border-color: var(--assistant-message-border) !important;
-        border-left-color: var(--assistant-message-border) !important;
-    }}
+    [data-testid="stChatMessage"] {{ min-width: 0 !important; }}
     [data-testid="stChatInput"] textarea {{
         color: var(--viva-text-color) !important;
         background: var(--panel-bg) !important;
