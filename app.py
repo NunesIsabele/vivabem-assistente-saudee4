@@ -1,4 +1,4 @@
-"""Interface do VivaBem com acessibilidade e sem busca automática na web."""
+"""VivaBem: assistente educativo de prevenção, com interface nativa Streamlit."""
 
 import logging
 from copy import deepcopy
@@ -17,7 +17,12 @@ st.set_page_config(
     layout="centered",
 )
 
-# O histórico persistente fica no localStorage deste navegador, sem conta ou banco online.
+MAX_SAVED_CONVERSATIONS = 20
+MAX_MESSAGES_PER_CONVERSATION = 150
+MAX_MESSAGE_LENGTH = 12000
+
+# A interface do Streamlit gerencia o tema. Este componente apenas lê e salva
+# o histórico no localStorage do navegador, sem criar elementos visuais.
 LOCAL_HISTORY_JS = r"""
 export default function(component) {
   const { data, setStateValue } = component;
@@ -56,13 +61,31 @@ LOCAL_HISTORY_COMPONENT = st.components.v2.component(
     js=LOCAL_HISTORY_JS,
 )
 
-MAX_SAVED_CONVERSATIONS = 20
-MAX_MESSAGES_PER_CONVERSATION = 150
-MAX_MESSAGE_LENGTH = 12000
+HEALTH_REFERENCES = [
+    (
+        "Biblioteca Virtual em Saúde — Ministério da Saúde",
+        "https://bvsms.saude.gov.br/",
+    ),
+    (
+        "Guia de Atividade Física — Ministério da Saúde",
+        "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2021/guia-de-atividade-fisica-para-a-populacao-brasileira.pdf/view",
+    ),
+    (
+        "Guia Alimentar — Ministério da Saúde",
+        "https://www.gov.br/saude/pt-br/assuntos/saude-brasil/publicacoes-para-promocao-a-saude/guia_alimentar_populacao_brasileira_2ed.pdf/@@download/file",
+    ),
+    ("Tópicos de saúde — Organização Mundial da Saúde", "https://www.who.int/pt/health-topics"),
+    ("Tópicos de saúde — Organização Pan-Americana da Saúde", "https://www.paho.org/pt/topicos"),
+    ("Informação em Saúde — Fiocruz/Icict", "https://www.icict.fiocruz.br/informacao-em-saude"),
+    (
+        "Prevenção do câncer — INCA",
+        "https://ninho.inca.gov.br/jspui/handle/123456789/17929?locale=pt_BR",
+    ),
+]
 
 
 def clean_local_history(raw_history):
-    """Valida o conteúdo recuperado do navegador antes de mostrá-lo no app."""
+    """Valida e limita o histórico recebido do armazenamento do navegador."""
     if not isinstance(raw_history, list):
         return []
 
@@ -70,38 +93,48 @@ def clean_local_history(raw_history):
     for item in raw_history[-MAX_SAVED_CONVERSATIONS:]:
         if not isinstance(item, dict):
             continue
-        messages = item.get("messages", [])
-        if not isinstance(messages, list):
+
+        raw_messages = item.get("messages", [])
+        if not isinstance(raw_messages, list):
             continue
-        safe_messages = []
-        for message in messages[-MAX_MESSAGES_PER_CONVERSATION:]:
+
+        messages = []
+        for message in raw_messages[-MAX_MESSAGES_PER_CONVERSATION:]:
             if not isinstance(message, dict):
                 continue
             role = message.get("role")
             content = message.get("content")
             if role in {"user", "assistant"} and isinstance(content, str):
-                safe_messages.append({
-                    "role": role,
-                    "content": content[:MAX_MESSAGE_LENGTH],
-                })
-        if not safe_messages:
+                messages.append({"role": role, "content": content[:MAX_MESSAGE_LENGTH]})
+
+        if not messages:
             continue
-        conv_id = item.get("id")
-        if not isinstance(conv_id, str) or not conv_id:
-            conv_id = str(uuid4())
+
+        conversation_id = item.get("id")
         title = item.get("title")
-        if not isinstance(title, str) or not title:
-            title = "Conversa salva"
         updated_at = item.get("updated_at")
-        if not isinstance(updated_at, str):
-            updated_at = ""
-        cleaned.append({
-            "id": conv_id[:80],
-            "title": title[:80],
-            "updated_at": updated_at[:40],
-            "messages": safe_messages,
-        })
+        cleaned.append(
+            {
+                "id": conversation_id[:80] if isinstance(conversation_id, str) and conversation_id else str(uuid4()),
+                "title": title[:80] if isinstance(title, str) and title else "Conversa salva",
+                "updated_at": updated_at[:40] if isinstance(updated_at, str) else "",
+                "messages": messages,
+            }
+        )
     return cleaned
+
+
+def conversation_label(conversation):
+    """Cria o rótulo da conversa, tolerando datas antigas inválidas."""
+    title = conversation.get("title", "Conversa salva")
+    updated_at = conversation.get("updated_at", "")
+    if updated_at:
+        try:
+            date_label = datetime.fromisoformat(updated_at).strftime("%d/%m/%Y %H:%M")
+            return f"{title} · {date_label}"
+        except ValueError:
+            pass
+    return title
 
 
 if "local_history_ready" not in st.session_state:
@@ -117,148 +150,82 @@ if "local_history_ready" not in st.session_state:
     st.session_state.local_conversations = clean_local_history(
         loaded_payload.get("conversations", [])
     )
-    latest = st.session_state.local_conversations[-1] if st.session_state.local_conversations else None
+    latest = (
+        st.session_state.local_conversations[-1]
+        if st.session_state.local_conversations
+        else None
+    )
     st.session_state.active_conversation_id = latest["id"] if latest else None
     st.session_state.messages = deepcopy(latest["messages"]) if latest else []
     st.session_state.local_history_ready = True
 
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
 
 def save_current_conversation():
-    """Atualiza a conversa ativa em memória; o componente persiste no navegador."""
+    """Atualiza a conversa ativa; a gravação local é feita pelo componente."""
     messages = st.session_state.messages
     if not messages:
         return
 
-    conversation_id = st.session_state.active_conversation_id
-    if not conversation_id:
-        conversation_id = str(uuid4())
-        st.session_state.active_conversation_id = conversation_id
-
-    existing = next(
-        (item for item in st.session_state.local_conversations
-         if item["id"] == conversation_id),
+    conversation_id = st.session_state.active_conversation_id or str(uuid4())
+    st.session_state.active_conversation_id = conversation_id
+    conversation = next(
+        (item for item in st.session_state.local_conversations if item["id"] == conversation_id),
         None,
     )
-    if existing:
-        conversation = existing
-    else:
+    if conversation is None:
         conversation = {"id": conversation_id}
         st.session_state.local_conversations.append(conversation)
 
-    first_user_message = next(
-        (item["content"] for item in messages if item["role"] == "user"),
+    first_question = next(
+        (message["content"] for message in messages if message["role"] == "user"),
         "Nova conversa",
     )
-    conversation["title"] = first_user_message.strip().replace("\n", " ")[:48]
+    conversation["title"] = first_question.strip().replace("\n", " ")[:48]
     conversation["updated_at"] = datetime.now().astimezone().isoformat(timespec="minutes")
     conversation["messages"] = deepcopy(messages[-MAX_MESSAGES_PER_CONVERSATION:])
     st.session_state.local_conversations.sort(key=lambda item: item.get("updated_at", ""))
-    st.session_state.local_conversations = st.session_state.local_conversations[-MAX_SAVED_CONVERSATIONS:]
+    st.session_state.local_conversations = st.session_state.local_conversations[
+        -MAX_SAVED_CONVERSATIONS:
+    ]
 
 
-if "messages" not in st.session_state:
+def start_new_conversation():
+    st.session_state.active_conversation_id = None
     st.session_state.messages = []
 
-HEALTH_REFERENCES = [
-    (
-        "Biblioteca Virtual em Saúde — Ministério da Saúde",
-        "https://bvsms.saude.gov.br/",
-    ),
-    (
-        "Guia de Atividade Física para a População Brasileira — Ministério da Saúde",
-        "https://www.gov.br/saude/pt-br/centrais-de-conteudo/publicacoes/guias-e-manuais/2021/guia-de-atividade-fisica-para-a-populacao-brasileira.pdf/view",
-    ),
-    (
-        "Guia Alimentar para a População Brasileira — Ministério da Saúde",
-        "https://www.gov.br/saude/pt-br/assuntos/saude-brasil/publicacoes-para-promocao-a-saude/guia_alimentar_populacao_brasileira_2ed.pdf/@@download/file",
-    ),
-    (
-        "Tópicos de saúde — Organização Mundial da Saúde (OMS)",
-        "https://www.who.int/pt/health-topics",
-    ),
-    (
-        "Tópicos de saúde — Organização Pan-Americana da Saúde (OPAS)",
-        "https://www.paho.org/pt/topicos",
-    ),
-    (
-        "Informação em Saúde — Fiocruz/Icict",
-        "https://www.icict.fiocruz.br/informacao-em-saude",
-    ),
-    (
-        "Recomendações para prevenir o câncer — INCA",
-        "https://ninho.inca.gov.br/jspui/handle/123456789/17929?locale=pt_BR",
-    ),
-]
 
-
-def reset_accessibility_settings():
-    """Restaura os valores iniciais dos controles de acessibilidade."""
-    st.session_state.high_contrast = False
-    st.session_state.font_scale = 100
-    st.session_state.line_spacing = 1.6
-    st.session_state.reduce_motion = True
-
+st.title("🌿 VivaBem")
+st.caption("Informações gerais sobre prevenção e hábitos saudáveis.")
+st.info(
+    "Este protótipo é educativo. Não fazemos diagnósticos nem prescrevemos tratamentos "
+    "ou medicamentos. Não envie dados pessoais ou informações reais de saúde. "
+    "Em uma emergência, procure imediatamente um serviço de saúde local."
+)
 
 with st.sidebar:
-    st.markdown("## Acessibilidade")
-    with st.container(key="viva_sidebar_accessibility_note"):
-        st.markdown("Personalize a aparência e a leitura do VivaBem.")
-    st.checkbox("Ativar alto contraste", key="high_contrast")
-    st.slider(
-        "Tamanho do texto",
-        min_value=100,
-        max_value=150,
-        value=100,
-        step=10,
-        format="%d%%",
-        key="font_scale",
-        help="Aumenta o texto da conversa, dos avisos e dos controles.",
-    )
-    st.slider(
-        "Espaçamento entre linhas",
-        min_value=1.4,
-        max_value=2.0,
-        value=1.6,
-        step=0.1,
-        key="line_spacing",
-        help="Aumenta o espaço vertical entre as linhas do texto.",
-    )
-    st.checkbox("Reduzir animações", key="reduce_motion", value=True)
-    st.button(
-        "Restaurar padrão",
-        use_container_width=True,
-        on_click=reset_accessibility_settings,
+    st.header("Sobre o VivaBem")
+    st.write("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
+    st.write(
+        "As conversas ficam salvas neste navegador. Em computadores compartilhados, "
+        "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
+        "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
     )
 
-    st.divider()
-    st.markdown("### Sobre o VivaBem")
-    with st.container(key="viva_sidebar_about_note"):
-        st.markdown("Um protótipo de assistente para informações gerais de prevenção e bem-estar.")
-    with st.container(key="viva_sidebar_safety_note"):
-        st.markdown(
-            "**Importante**\n\n"
-            "**Não fazemos diagnósticos nem prescrevemos tratamentos ou medicamentos.**\n\n"
-            "**Em uma emergência, procure imediatamente um serviço de saúde local.**"
-        )
-    with st.container(key="viva_sidebar_privacy_note"):
-        st.markdown(
-            "**As conversas ficam salvas neste navegador.** Em computadores compartilhados, "
-            "outras pessoas que usam o mesmo perfil podem ver o histórico. As mensagens "
-            "enviadas continuam sendo processadas pelo Streamlit e pelo Gemini."
-        )
     with st.expander("Fontes confiáveis de saúde"):
-        with st.container(key="viva_sidebar_sources_note"):
-            st.markdown(
-                "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
-                "as respostas do Gemini podem não usar estes materiais."
-            )
+        st.write(
+            "Links para consulta. O VivaBem não pesquisa a web automaticamente; "
+            "as respostas do Gemini podem não usar estes materiais."
+        )
         for title, url in HEALTH_REFERENCES:
             st.markdown(f"- [{title}]({url})")
 
-    st.markdown("### Conversas neste navegador")
+    st.divider()
+    st.subheader("Conversas neste navegador")
     conversations = st.session_state.local_conversations
-    saved_ids = [item["id"] for item in conversations]
-    choices = [None] + saved_ids
+    choices = [None] + [item["id"] for item in conversations]
     active_id = st.session_state.active_conversation_id
     selected_index = choices.index(active_id) if active_id in choices else 0
 
@@ -267,9 +234,10 @@ with st.sidebar:
         options=choices,
         index=selected_index,
         format_func=lambda value: (
-            "Conversa nova" if value is None else next(
-                (f"{item['title']} · {datetime.fromisoformat(item['updated_at']).strftime('%d/%m/%Y %H:%M')}" for item in conversations
-                 if item["id"] == value),
+            "Conversa nova"
+            if value is None
+            else next(
+                (conversation_label(item) for item in conversations if item["id"] == value),
                 "Conversa salva",
             )
         ),
@@ -277,467 +245,64 @@ with st.sidebar:
     if selected_id != st.session_state.active_conversation_id:
         st.session_state.active_conversation_id = selected_id
         selected_conversation = next(
-            (item for item in conversations if item["id"] == selected_id), None
+            (item for item in conversations if item["id"] == selected_id),
+            None,
         )
         st.session_state.messages = (
             deepcopy(selected_conversation["messages"]) if selected_conversation else []
         )
-
-    if st.button("Nova conversa", use_container_width=True):
-        st.session_state.active_conversation_id = None
-        st.session_state.messages = []
         st.rerun()
 
-    active_exists = st.session_state.active_conversation_id in saved_ids
-    if st.button("Excluir conversa aberta", use_container_width=True, disabled=not active_exists):
+    st.button("Nova conversa", on_click=start_new_conversation, use_container_width=True)
+
+    active_exists = st.session_state.active_conversation_id in [item["id"] for item in conversations]
+    if st.button("Excluir conversa aberta", disabled=not active_exists, use_container_width=True):
         st.session_state.local_conversations = [
-            item for item in conversations
-            if item["id"] != st.session_state.active_conversation_id
+            item for item in conversations if item["id"] != st.session_state.active_conversation_id
         ]
-        st.session_state.active_conversation_id = None
-        st.session_state.messages = []
+        start_new_conversation()
         st.rerun()
 
     with st.expander("Apagar todo o histórico deste navegador"):
         st.caption("Isso remove as conversas salvas neste navegador e não pode ser desfeito.")
         if st.button("Apagar histórico salvo", use_container_width=True):
             st.session_state.local_conversations = []
-            st.session_state.active_conversation_id = None
-            st.session_state.messages = []
+            start_new_conversation()
             st.rerun()
 
 
-high_contrast = st.session_state.get("high_contrast", False)
-font_scale = st.session_state.get("font_scale", 100) / 100
-line_spacing = st.session_state.get("line_spacing", 1.6)
-reduce_motion = st.session_state.get("reduce_motion", True)
-accent = "#557B62"
-
-if high_contrast:
-    page_bg = "#000000"
-    panel_bg = "#101010"
-    secondary_bg = "#101010"
-    text_color = "#FFFFFF"
-    muted_color = "#FFFFFF"
-    border_color = "#FFFFFF"
-    emphasis_color = "#FFFF00"
-    accent = "#FFFF00"
-    message_bg = "#101010"
-    sidebar_safety_bg = "#000000"
-    sidebar_safety_border = "#FFFF00"
-    sidebar_privacy_bg = "#000000"
-    sidebar_privacy_border = "#FFFFFF"
-    sidebar_info_bg = "#000000"
-    sidebar_info_border = "#FFFFFF"
-    sidebar_bg = "#000000"
-    sidebar_text = "#FFFFFF"
-    sidebar_muted = "#FFFFFF"
-    sidebar_control_bg = "#0B0B0B"
-    sidebar_control_text = "#FFFFFF"
-    sidebar_border = "#FFFFFF"
-    notice_bg = "#000000"
-    notice_text = "#FFFF00"
-    tip_cards = [
-        ("#000000", "#FFFFFF", "#FFFFFF"),
-        ("#000000", "#FFFFFF", "#FFFFFF"),
-        ("#000000", "#FFFFFF", "#FFFFFF"),
-    ]
-else:
-    # O Streamlit controla claro/escuro; as cores personalizadas se misturam ao tema ativo.
-    page_bg = "var(--viva-native-bg)"
-    panel_bg = "var(--viva-native-panel)"
-    secondary_bg = "var(--viva-native-panel)"
-    message_bg = "color-mix(in srgb, var(--viva-native-panel) 94%, var(--viva-accent-color) 6%)"
-    sidebar_safety_bg = "color-mix(in srgb, var(--viva-native-panel) 82%, #F2E5C4 18%)"
-    sidebar_safety_border = "color-mix(in srgb, var(--viva-native-text) 22%, #B49C5B 78%)"
-    sidebar_privacy_bg = "color-mix(in srgb, var(--viva-native-panel) 82%, #CFE7D3 18%)"
-    sidebar_privacy_border = "color-mix(in srgb, var(--viva-native-text) 20%, #6F997B 80%)"
-    sidebar_info_bg = "color-mix(in srgb, var(--viva-native-panel) 86%, #DCE7F5 14%)"
-    sidebar_info_border = "color-mix(in srgb, var(--viva-native-text) 15%, #8DA7B7 85%)"
-    text_color = "var(--viva-native-text)"
-    emphasis_color = "color-mix(in srgb, var(--viva-native-text) 78%, #557B62 22%)"
-    muted_color = "color-mix(in srgb, var(--viva-native-text) 78%, var(--viva-native-bg) 22%)"
-    border_color = "color-mix(in srgb, var(--viva-native-text) 18%, var(--viva-native-bg) 82%)"
-    sidebar_bg = "var(--viva-native-panel)"
-    sidebar_text = "var(--viva-native-text)"
-    sidebar_muted = "color-mix(in srgb, var(--viva-native-text) 78%, var(--viva-native-bg) 22%)"
-    sidebar_control_bg = "var(--viva-native-bg)"
-    sidebar_control_text = "var(--viva-native-text)"
-    sidebar_border = "color-mix(in srgb, var(--viva-native-text) 20%, var(--viva-native-bg) 80%)"
-    notice_bg = "color-mix(in srgb, var(--viva-native-panel) 91%, #F2E5C4 9%)"
-    notice_text = "var(--viva-native-text)"
-    tip_cards = [
-        ("color-mix(in srgb, var(--viva-native-panel) 90%, #D7EFE1 10%)", text_color, muted_color),
-        ("color-mix(in srgb, var(--viva-native-panel) 90%, #F4E4D3 10%)", text_color, muted_color),
-        ("color-mix(in srgb, var(--viva-native-panel) 90%, #DCE7F5 10%)", text_color, muted_color),
-    ]
-
-motion_css = (
-    "* { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; "
-    "scroll-behavior: auto !important; }"
-    if reduce_motion
-    else ""
-)
-
-st.markdown(
-    f"""
-    <style>
-    :root {{
-        --viva-native-bg: var(--st-background-color, var(--background-color, #FFFFFF));
-        --viva-native-panel: var(--st-secondary-background-color, var(--secondary-background-color, var(--st-background-color, #FFFFFF)));
-        --viva-native-text: var(--st-text-color, var(--text-color, #20372C));
-        --page-bg: {page_bg};
-        --panel-bg: {panel_bg};
-        --message-bg: {message_bg};
-        --sidebar-safety-bg: {sidebar_safety_bg};
-        --sidebar-safety-border: {sidebar_safety_border};
-        --sidebar-privacy-bg: {sidebar_privacy_bg};
-        --sidebar-privacy-border: {sidebar_privacy_border};
-        --sidebar-info-bg: {sidebar_info_bg};
-        --sidebar-info-border: {sidebar_info_border};
-        --viva-text-color: {text_color};
-        --viva-emphasis-color: {emphasis_color};
-        --viva-muted-color: {muted_color};
-        --viva-border-color: {border_color};
-        --viva-accent-color: {accent};
-        --sidebar-bg: {sidebar_bg};
-        --sidebar-text: {sidebar_text};
-        --sidebar-muted: {sidebar_muted};
-        --sidebar-control-bg: {sidebar_control_bg};
-        --sidebar-control-text: {sidebar_control_text};
-        --sidebar-border: {sidebar_border};
-        --font-scale: {font_scale};
-        --line-spacing: {line_spacing};
-    }}
-    .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {{
-        --viva-native-bg: var(--st-background-color, var(--background-color, #FFFFFF));
-        --viva-native-panel: var(--st-secondary-background-color, var(--secondary-background-color, var(--st-background-color, #FFFFFF)));
-        --viva-native-text: var(--st-text-color, var(--text-color, #20372C));
-        --page-bg: {page_bg};
-        --panel-bg: {panel_bg};
-        background: var(--page-bg);
-        color: var(--viva-text-color);
-        font-size: calc(16px * var(--font-scale));
-    }}
-    html, body, [data-testid="stApp"] {{
-        background: var(--page-bg) !important;
-        color: var(--viva-text-color) !important;
-    }}
-    input[type="checkbox"], input[type="radio"] {{ accent-color: var(--primary-color) !important; }}
-    .tip-card {{
-        min-height: 150px;
-        padding: 1.15rem;
-        border: 1px solid color-mix(in srgb, var(--viva-text-color) 10%, transparent);
-        border-radius: 18px;
-        line-height: var(--line-spacing);
-        box-sizing: border-box;
-        box-shadow: 0 8px 22px rgba(30, 55, 65, .06);
-    }}
-    .tip-card .tip-icon {{ font-size: 1.65rem; margin-bottom: .4rem; }}
-    .tip-card strong {{ display: block; margin-bottom: .35rem; }}
-    .tip-card p {{ margin: 0; font-size: .92rem; }}
-    .stButton > button {{
-        border-radius: 12px !important;
-        color: var(--viva-accent-color) !important;
-        background: var(--panel-bg) !important;
-        border-color: color-mix(in srgb, var(--viva-accent-color) 38%, var(--viva-border-color)) !important;
-        transition: transform .16s ease, box-shadow .16s ease, border-color .16s ease;
-    }}
-    .stButton > button:hover {{
-        transform: translateY(-1px);
-        border-color: var(--viva-accent-color) !important;
-        background: color-mix(in srgb, var(--panel-bg) 92%, #D7EFE1 8%) !important;
-        box-shadow: 0 5px 14px rgba(30, 55, 65, .08);
-    }}
-    [data-testid="stHeader"] {{ background: var(--page-bg) !important; }}
-    [data-testid="stBottom"], [data-testid="stBottomBlockContainer"],
-    [class*="stBottom"] {{
-        background: var(--page-bg) !important;
-        background-color: var(--page-bg) !important;
-        background-image: none !important;
-    }}
-    [data-testid="stBottom"]::before, [class*="stBottom"]::before {{
-        background: var(--page-bg) !important;
-        background-color: var(--page-bg) !important;
-        background-image: none !important;
-    }}
-    [data-testid="stSidebar"] > div {{ background: var(--sidebar-bg); }}
-    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_accessibility_note"],
-    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_about_note"],
-    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_sources_note"] {{
-        background: var(--sidebar-info-bg) !important;
-        border: 1px solid var(--sidebar-info-border) !important;
-        border-left: 4px solid var(--sidebar-info-border) !important;
-        border-radius: 12px !important;
-        padding: .15rem .7rem !important;
-        margin: .35rem 0 .7rem !important;
-    }}
-    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_safety_note"] {{
-        background: var(--sidebar-safety-bg) !important;
-        border: 1px solid var(--sidebar-safety-border) !important;
-        border-left: 4px solid var(--sidebar-safety-border) !important;
-        border-radius: 13px !important;
-        padding: .2rem .7rem !important;
-        margin: .35rem 0 .7rem !important;
-    }}
-    [data-testid="stSidebar"] [class*="st-key-viva_sidebar_privacy_note"] {{
-        background: var(--sidebar-privacy-bg) !important;
-        border: 1px solid var(--sidebar-privacy-border) !important;
-        border-left: 4px solid var(--sidebar-privacy-border) !important;
-        border-radius: 13px !important;
-        padding: .2rem .7rem !important;
-        margin: .35rem 0 .7rem !important;
-    }}
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] *,
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"],
-    [data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
-    [data-testid="stSidebar"] [data-testid="stCheckbox"] label,
-    [data-testid="stSidebar"] [data-testid="stCheckbox"] label *,
-    [data-testid="stSidebar"] [data-testid="stSlider"] label,
-    [data-testid="stSidebar"] [data-testid="stSlider"] label * {{
-        color: var(--sidebar-text) !important;
-        opacity: 1 !important;
-    }}
-    [data-testid="stSidebar"] [data-testid="stCaptionContainer"] *,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {{
-        color: var(--sidebar-muted) !important;
-        opacity: 1 !important;
-        line-height: var(--line-spacing) !important;
-    }}
-    [data-testid="stSidebar"] [data-baseweb="select"] > div {{
-        background: var(--sidebar-control-bg) !important;
-        border: 1px solid var(--sidebar-border) !important;
-    }}
-    [data-testid="stSidebar"] [data-baseweb="select"] *,
-    [data-testid="stSidebar"] [data-baseweb="select"] input {{
-        color: var(--sidebar-control-text) !important;
-        opacity: 1 !important;
-    }}
-    [data-testid="stSidebar"] button {{
-        color: var(--sidebar-control-text) !important;
-        background: var(--sidebar-control-bg) !important;
-        border: 1px solid var(--sidebar-border) !important;
-        border-radius: 9px !important;
-        opacity: 1 !important;
-    }}
-    [data-testid="stSidebar"] button:hover {{ border-color: var(--viva-accent-color) !important; }}
-    [data-testid="stSidebar"] [data-baseweb="slider"] {{ color: var(--viva-accent-color) !important; }}
-    [data-testid="stMarkdownContainer"], [data-testid="stMarkdownContainer"] p,
-    [data-testid="stMarkdownContainer"] li, [data-testid="stMarkdownContainer"] strong,
-    [data-testid="stChatMessageContent"], [data-testid="stChatMessageContent"] *,
-    [data-testid="stAlert"] *, [data-testid="stCaptionContainer"] {{
-        color: var(--viva-text-color) !important;
-        line-height: var(--line-spacing) !important;
-        font-size: calc(1rem * var(--font-scale)) !important;
-    }}
-    [data-testid="stMarkdownContainer"] a {{
-        color: var(--viva-accent-color) !important;
-        text-decoration: underline !important;
-    }}
-    [data-testid="stMarkdownContainer"] strong,
-    [data-testid="stChatMessageContent"] strong,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3,
-    .hero h1, .tip-card strong, .notice strong {{
-        color: var(--viva-emphasis-color) !important;
-        font-weight: 700 !important;
-    }}
-    [data-testid="stAlert"] {{
-        background: var(--message-bg) !important;
-        border: 1px solid var(--viva-border-color) !important;
-    }}
-    [data-testid="stChatMessage"] {{
-        min-width: 0 !important;
-        background: transparent !important;
-        border: 0 !important;
-        box-shadow: none !important;
-    }}
-    [data-testid="stChatInput"] textarea {{
-        color: var(--viva-text-color) !important;
-        background: var(--panel-bg) !important;
-        border-color: var(--viva-border-color) !important;
-        border-radius: 14px !important;
-        font-size: calc(1rem * var(--font-scale)) !important;
-    }}
-    [data-testid="stChatInput"] textarea::placeholder {{ color: var(--viva-muted-color) !important; }}
-    [data-testid="stChatInput"] > div, [data-testid="stChatInput"] {{
-        background: var(--panel-bg) !important;
-        border-color: var(--viva-border-color) !important;
-    }}
-    [data-baseweb="popover"] [role="listbox"],
-    [data-baseweb="popover"] [role="option"] {{
-        color: var(--viva-text-color) !important;
-        background: var(--panel-bg) !important;
-    }}
-    [data-testid="stSidebar"] button:focus,
-    [data-testid="stSidebar"] input:focus,
-    [data-testid="stSidebar"] [role="combobox"]:focus,
-    [data-testid="stChatInput"] textarea:focus {{
-        outline: 3px solid var(--viva-accent-color) !important;
-        outline-offset: 2px !important;
-    }}
-    .block-container {{
-        width: 100%; max-width: 900px; padding-top: 1.5rem;
-        padding-left: clamp(1rem, 4vw, 2rem);
-        padding-right: clamp(1rem, 4vw, 2rem);
-        padding-bottom: calc(5rem + env(safe-area-inset-bottom));
-        box-sizing: border-box;
-    }}
-    .hero {{
-        padding: 1.65rem 1.9rem;
-        border-radius: 22px;
-        color: var(--viva-text-color);
-        background: linear-gradient(135deg, var(--panel-bg), color-mix(in srgb, var(--panel-bg) 94%, #DCEFE5 6%));
-        border: 1px solid var(--viva-border-color);
-        box-shadow: 0 12px 30px rgba(30, 55, 65, .06);
-        margin-bottom: 1rem;
-    }}
-    .hero h1 {{ margin: 0; font-size: calc(2rem * var(--font-scale)); color: var(--viva-text-color); letter-spacing: -.025em; }}
-    .hero p {{ margin: .5rem 0 0; color: var(--viva-muted-color); font-size: calc(1rem * var(--font-scale)); }}
-    .notice {{
-        padding: .9rem 1rem;
-        border-radius: 14px;
-        background: {notice_bg};
-        border: 1px solid var(--viva-border-color);
-        border-left: 4px solid var(--viva-accent-color);
-        color: {notice_text};
-        font-size: calc(.95rem * var(--font-scale));
-        line-height: var(--line-spacing);
-        margin-bottom: 1rem;
-        box-shadow: 0 6px 18px rgba(30, 55, 65, .04);
-    }}
-    .notice * {{ color: {notice_text} !important; }}
-    /* Ajustes para celular: reduz margens e impede que conteúdo ultrapasse a tela. */
-    @media (max-width: 768px) {{
-        .block-container {{
-            max-width: 100% !important;
-            padding-top: 1rem !important;
-            padding-left: .85rem !important;
-            padding-right: .85rem !important;
-            padding-bottom: calc(5.5rem + env(safe-area-inset-bottom)) !important;
-        }}
-        [data-testid="stMain"] {{ min-width: 0 !important; }}
-        [data-testid="stChatMessage"] {{
-            min-width: 0 !important;
-            padding: .6rem .7rem !important;
-            gap: .45rem !important;
-        }}
-        [data-testid="stChatMessageContent"],
-        [data-testid="stMarkdownContainer"] {{
-            min-width: 0 !important;
-            max-width: 100% !important;
-            overflow-wrap: anywhere !important;
-            word-break: normal !important;
-        }}
-        [data-testid="stMarkdownContainer"] table {{
-            display: block;
-            max-width: 100%;
-            overflow-x: auto;
-        }}
-        .hero {{ padding: 1rem 1.05rem !important; border-radius: 14px !important; }}
-        .hero h1 {{ font-size: calc(1.7rem * var(--font-scale)) !important; }}
-        .hero p {{ font-size: calc(.95rem * var(--font-scale)) !important; }}
-        .notice {{ padding: .75rem .8rem !important; }}
-        [data-testid="stChatInput"] {{
-            width: 100% !important;
-            max-width: 100% !important;
-            box-sizing: border-box !important;
-        }}
-        [data-testid="stSidebarContent"] {{
-            max-height: 100dvh !important;
-            overflow-y: auto !important;
-        }}
-        [data-testid="stSidebar"] [data-testid="stWidgetLabel"] {{
-            white-space: normal !important;
-            overflow-wrap: anywhere !important;
-        }}
-    }}
-    @media (max-width: 420px) {{
-        .block-container {{ padding-left: .65rem !important; padding-right: .65rem !important; }}
-        [data-testid="stChatMessage"] {{ padding: .5rem .55rem !important; }}
-        .hero h1 {{ font-size: calc(1.5rem * var(--font-scale)) !important; }}
-    }}
-    {motion_css}
-    </style>
-    <div class="hero">
-      <h1>🌿 VivaBem</h1>
-      <p>Seu espaço para conversar sobre prevenção e hábitos saudáveis.</p>
-    </div>
-    <div class="notice">
-      <strong>Aviso:</strong> este protótipo tem finalidade educativa e não substitui atendimento
-      profissional. Não envie dados pessoais ou informações reais de saúde. Em uma emergência,
-      procure um serviço de saúde local.
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
-
 if not st.session_state.messages:
-    st.info("Olá! Você pode perguntar sobre hábitos gerais de prevenção e bem-estar.")
-    st.markdown("### Quer uma ideia para começar?")
-    st.markdown("**Escolha um tema para enviar uma pergunta geral ao VivaBem.**")
-
-    tip_ideas = [
-        {
-            "icon": "🥗",
-            "title": "Alimentação e hidratação",
-            "tip": "Pequenas escolhas e uma rotina de hidratação podem fazer parte do cuidado diário.",
-            "prompt": "Quais hábitos gerais podem ajudar a manter uma alimentação variada e uma boa hidratação no dia a dia?",
-        },
-        {
-            "icon": "☀️",
-            "title": "Movimento no dia a dia",
-            "tip": "Uma caminhada, dança ou pausa ativa pode ser um jeito simples de começar a se movimentar.",
-            "prompt": "Que formas gerais e graduais existem para incluir mais movimento na rotina?",
-        },
-        {
-            "icon": "🌙",
-            "title": "Sono e descanso",
-            "tip": "Horários regulares e um ambiente tranquilo podem ajudar a criar uma rotina de descanso.",
-            "prompt": "Quais hábitos gerais podem contribuir para uma rotina de sono mais regular e descanso?",
-        },
+    st.subheader("Quer uma ideia para começar?")
+    suggestions = [
+        ("Alimentação e hidratação", "Quais hábitos gerais ajudam a manter uma alimentação variada e uma boa hidratação?"),
+        ("Atividade física", "Que hábitos gerais ajudam a incluir atividade física com segurança na rotina?"),
+        ("Sono e descanso", "Quais hábitos gerais podem ajudar a melhorar a rotina de sono e descanso?"),
     ]
-    tip_columns = st.columns(3, gap="medium")
-    for index, (column, idea) in enumerate(zip(tip_columns, tip_ideas)):
-        card_bg, card_text, card_muted = tip_cards[index]
-        with column:
-            with st.container(border=True):
-                st.markdown(
-                    f'''<div class="tip-card" style="background:{card_bg};color:{card_text}">
-                        <div class="tip-icon">{idea["icon"]}</div>
-                        <strong>{idea["title"]}</strong>
-                        <p style="color:{card_muted}">{idea["tip"]}</p>
-                    </div>''',
-                    unsafe_allow_html=True,
-                )
-                if st.button(
-                    "Perguntar sobre isso",
-                    key=f"tip_suggestion_{index}",
-                    use_container_width=True,
-                ):
-                    st.session_state["suggestion_prompt"] = idea["prompt"]
-                    st.rerun()
-
-def render_chat_message(role, content):
-    """Mostra a fala; o CSS aplica a caixa diretamente ao st.chat_message."""
-    avatar = "🙂" if role == "user" else "🌿"
-    with st.chat_message(role, avatar=avatar):
-        st.markdown(content)
+    for index, (label, question) in enumerate(suggestions):
+        if st.button(label, key=f"suggestion_{index}"):
+            st.session_state.suggestion_prompt = question
+            st.rerun()
 
 
-for message in st.session_state.messages:
-    render_chat_message(message["role"], message["content"])
+def render_chat_message(message):
+    """Usa a apresentação nativa de mensagens do Streamlit."""
+    with st.chat_message(message["role"]):
+        st.markdown(message["content"])
+
+
+for saved_message in st.session_state.messages:
+    render_chat_message(saved_message)
 
 typed_prompt = st.chat_input("Escreva uma pergunta geral...")
-suggestion_prompt = st.session_state.pop("suggestion_prompt", None)
-prompt = suggestion_prompt or typed_prompt
-if prompt:
-    user_message_index = len(st.session_state.messages)
-    st.session_state.messages.append({"role": "user", "content": prompt})
-    save_current_conversation()
-    render_chat_message("user", prompt)
+prompt = st.session_state.pop("suggestion_prompt", None) or typed_prompt
 
-    with st.chat_message("assistant", avatar="🌿"):
+if prompt:
+    user_message = {"role": "user", "content": prompt}
+    st.session_state.messages.append(user_message)
+    save_current_conversation()
+    render_chat_message(user_message)
+
+    with st.chat_message("assistant"):
         with st.spinner("Preparando uma resposta..."):
             try:
                 answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
@@ -749,13 +314,10 @@ if prompt:
                 )
             else:
                 st.markdown(answer)
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": answer}
-                )
+                st.session_state.messages.append({"role": "assistant", "content": answer})
                 save_current_conversation()
 
 
-# Mantém uma cópia persistente apenas no armazenamento deste navegador.
 LOCAL_HISTORY_COMPONENT(
     data={
         "action": "save",
