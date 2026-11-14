@@ -367,7 +367,8 @@ if not st.session_state.messages:
 
 def render_chat_message(message):
     """Usa a apresentação nativa de mensagens do Streamlit."""
-    with st.chat_message(message["role"]):
+    avatar = "🙂" if message["role"] == "user" else "🌿"
+    with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
 
@@ -383,7 +384,7 @@ if prompt:
     save_current_conversation()
     render_chat_message(user_message)
 
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar="🌿"):
         with st.spinner("Preparando uma resposta..."):
             try:
                 answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
