@@ -369,8 +369,7 @@ assistant_message_tint = MESSAGE_COLORS.get(
     MESSAGE_COLORS[DEFAULT_ASSISTANT_MESSAGE_COLOR],
 )
 accent = "#557B62"
-
-    if high_contrast:
+if high_contrast:
     page_bg = "#000000"
     panel_bg = "#101010"
     secondary_bg = "#101010"
