@@ -13,8 +13,8 @@ from safety import ASSISTANT_INSTRUCTIONS
 
 st.set_page_config(
     page_title="VivaBem | Saúde Preventiva",
-    page_icon="💙",
-    layout="wide",
+    page_icon="🌿",
+    layout="centered",
 )
 
 MAX_SAVED_CONVERSATIONS = 20
@@ -202,28 +202,12 @@ def reset_text_accessibility():
     st.session_state.line_spacing = 1.6
 
 
-# Cabeçalho principal inspirado na referência visual.
-st.markdown(
-    """
-    <section class="hero-vivabem">
-        <div class="hero-copy">
-            <div class="hero-eyebrow">SEU ASSISTENTE DE SAÚDE E BEM-ESTAR</div>
-            <h1>Olá!<br>Eu sou o <span>VivaBem</span></h1>
-            <p>Pergunte, aprenda e cuide da sua saúde!</p>
-            <div class="hero-notice">
-                <span class="notice-icon">i</span>
-                <span>Este protótipo é educativo. Não fazemos diagnósticos
-                nem prescrevemos tratamentos ou medicamentos.</span>
-            </div>
-        </div>
-        <div class="hero-art" aria-hidden="true">
-            <div class="hero-heart">💙</div>
-            <div class="hero-medical">🩺</div>
-            <div class="hero-plus">+</div>
-        </div>
-    </section>
-    """,
-    unsafe_allow_html=True,
+st.title("🌿 VivaBem")
+st.caption("Informações gerais sobre prevenção e hábitos saudáveis.")
+st.info(
+    "Este protótipo é educativo. Não fazemos diagnósticos nem prescrevemos tratamentos "
+    "ou medicamentos. Não envie dados pessoais ou informações reais de saúde. "
+    "Em uma emergência, procure imediatamente um serviço de saúde local."
 )
 
 with st.sidebar:
@@ -340,319 +324,50 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# Estilo visual: azul, branco, cartões leves e bastante espaço em branco.
-st.markdown(
-    """
-    <style>
-    :root {
-        --vb-blue: #1677e8;
-        --vb-navy: #102b5c;
-        --vb-pale: #eef5ff;
-        --vb-border: #d7e6fb;
-    }
-
-    [data-testid="stAppViewContainer"] {
-        background:
-            radial-gradient(circle at 78% 8%, rgba(202, 228, 255, .48), transparent 28%),
-            linear-gradient(145deg, #fbfdff 0%, #f3f8ff 100%);
-    }
-
-    [data-testid="stHeader"] {
-        background: rgba(255,255,255,.65);
-    }
-
-    [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, #edf5ff 0%, #e5f0ff 100%);
-        border-right: 1px solid #d5e5fa;
-    }
-
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h1,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h2,
-    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] h3 {
-        color: var(--vb-navy);
-    }
-
-    [data-testid="stSidebar"] [data-testid="stButton"] button {
-        border: 1px solid #c5daf8;
-        border-radius: 18px;
-        color: var(--vb-navy);
-        background: rgba(255,255,255,.78);
-    }
-
-    [data-testid="stAppViewContainer"] .main .block-container {
-        max-width: 1420px;
-        padding-top: 2.2rem;
-        padding-bottom: 2.5rem;
-    }
-
-    .hero-vivabem {
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 2rem;
-        min-height: 285px;
-        padding: 2rem 2.4rem;
-        margin: .2rem 0 2rem;
-        overflow: hidden;
-        border: 1px solid rgba(199, 222, 252, .8);
-        border-radius: 28px;
-        background: linear-gradient(112deg, #ffffff 0%, #f0f7ff 58%, #dceeff 100%);
-        box-shadow: 0 12px 34px rgba(40, 102, 180, .08);
-    }
-
-    .hero-vivabem:after {
-        content: "";
-        position: absolute;
-        width: 360px;
-        height: 360px;
-        right: 4%;
-        top: -190px;
-        border-radius: 50%;
-        background: rgba(123, 190, 255, .16);
-    }
-
-    .hero-copy {
-        position: relative;
-        z-index: 1;
-        max-width: 680px;
-    }
-
-    .hero-eyebrow {
-        color: #4387d8;
-        font-size: .76rem;
-        font-weight: 800;
-        letter-spacing: .12em;
-        margin-bottom: .8rem;
-    }
-
-    .hero-vivabem h1 {
-        color: var(--vb-navy);
-        font-size: clamp(2.4rem, 5vw, 4.3rem);
-        line-height: 1.02;
-        letter-spacing: -.045em;
-        margin: 0;
-        font-weight: 800;
-    }
-
-    .hero-vivabem h1 span {
-        color: var(--vb-blue);
-    }
-
-    .hero-vivabem p {
-        color: #244675;
-        font-size: 1.25rem;
-        margin: .9rem 0 1.25rem;
-    }
-
-    .hero-notice {
-        display: flex;
-        align-items: center;
-        gap: .8rem;
-        max-width: 660px;
-        padding: .85rem 1rem;
-        border: 1px solid #c9e0ff;
-        border-radius: 18px;
-        color: #174b91;
-        background: rgba(218, 235, 255, .78);
-        font-size: .92rem;
-        line-height: 1.45;
-    }
-
-    .notice-icon {
-        display: inline-flex;
-        flex: 0 0 32px;
-        width: 32px;
-        height: 32px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 50%;
-        color: white;
-        background: var(--vb-blue);
-        font-weight: 800;
-        font-size: 1.15rem;
-        font-family: Georgia, serif;
-    }
-
-    .hero-art {
-        position: relative;
-        z-index: 1;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 260px;
-        height: 220px;
-        border-radius: 48% 52% 44% 56%;
-        background: radial-gradient(circle, #ffffff 0%, #d9edff 68%, rgba(217,237,255,0) 70%);
-    }
-
-    .hero-heart {
-        font-size: 8rem;
-        filter: drop-shadow(0 12px 12px rgba(28, 100, 190, .18));
-    }
-
-    .hero-medical {
-        position: absolute;
-        right: 2px;
-        bottom: 8px;
-        font-size: 4rem;
-        transform: rotate(-12deg);
-        filter: drop-shadow(0 5px 5px rgba(28, 100, 190, .15));
-    }
-
-    .hero-plus {
-        position: absolute;
-        left: 25px;
-        top: 24px;
-        color: #398ce8;
-        font-size: 2.4rem;
-        font-weight: 800;
-    }
-
-    .section-heading {
-        color: var(--vb-navy);
-        text-align: center;
-        font-size: 1.65rem;
-        font-weight: 800;
-        margin: 1.3rem 0 1.15rem;
-    }
-
-    .topic-card {
-        min-height: 220px;
-        padding: 1.25rem 1.35rem;
-        border: 1px solid var(--vb-border);
-        border-radius: 23px;
-        background: rgba(255,255,255,.92);
-        box-shadow: 0 7px 18px rgba(38, 100, 180, .08);
-    }
-
-    .topic-icon {
-        font-size: 3.8rem;
-        line-height: 1.2;
-        margin-bottom: .5rem;
-    }
-
-    .topic-card h3 {
-        color: var(--vb-navy);
-        font-size: 1.25rem;
-        line-height: 1.2;
-        margin: .25rem 0 .55rem;
-    }
-
-    .topic-card p {
-        color: #365477;
-        font-size: .96rem;
-        line-height: 1.45;
-        margin: 0;
-    }
-
-    [data-testid="stButton"] button {
-        border-radius: 16px;
-        border: 1px solid #c8ddfa;
-        color: #145bb2;
-        background: #e7f1ff;
-        font-weight: 650;
-        transition: all .15s ease;
-    }
-
-    [data-testid="stButton"] button:hover {
-        border-color: #78b2f5;
-        color: #0c4f9f;
-        background: #d8eaff;
-    }
-
-    [data-testid="stChatInput"] {
-        border: 1px solid #cbdff8;
-        border-radius: 22px;
-        background: white;
-        box-shadow: 0 6px 18px rgba(38, 100, 180, .08);
-    }
-
-    [data-testid="stChatMessage"] {
-        border: 1px solid #e0ebf8;
-        border-radius: 18px;
-        background: rgba(255,255,255,.82);
-        padding: .8rem 1rem;
-    }
-
-    [data-testid="stAlert"] {
-        border-radius: 16px;
-    }
-
-    @media (max-width: 850px) {
-        .hero-vivabem {
-            padding: 1.5rem;
-            min-height: auto;
-        }
-        .hero-art {
-            flex-basis: 150px;
-            height: 150px;
-        }
-        .hero-heart { font-size: 5rem; }
-        .hero-medical { font-size: 2.5rem; }
-    }
-
-    @media (max-width: 600px) {
-        .hero-art { display: none; }
-        .hero-vivabem { padding: 1.25rem; }
-        .hero-vivabem p { font-size: 1.05rem; }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
 if not st.session_state.messages:
-    st.markdown(
-        '<div class="section-heading">Escolha um assunto para começar</div>',
-        unsafe_allow_html=True,
-    )
+    st.subheader("Quer uma ideia para começar?")
     suggestions = [
         {
-            "icon": "🍎",
+            "icon": "🥗",
             "title": "Alimentação e hidratação",
-            "tip": "Dicas e orientações para uma vida mais saudável.",
+            "tip": "Pequenas escolhas e uma rotina de hidratação podem fazer parte do cuidado diário.",
             "prompt": "Quais hábitos gerais ajudam a manter uma alimentação variada e uma boa hidratação?",
         },
         {
-            "icon": "👟",
+            "icon": "🚶",
             "title": "Atividade física",
-            "tip": "Movimente-se e cuide do seu corpo.",
+            "tip": "Movimentar o corpo de um jeito possível e agradável ajuda a construir uma rotina mais ativa.",
             "prompt": "Que hábitos gerais ajudam a incluir atividade física com segurança na rotina?",
         },
         {
-            "icon": "🛏️",
+            "icon": "🌙",
             "title": "Sono e descanso",
-            "tip": "Melhore sua rotina de sono e descanso.",
+            "tip": "Horários regulares e um ambiente tranquilo podem apoiar uma rotina de descanso melhor.",
             "prompt": "Quais hábitos gerais podem ajudar a melhorar a rotina de sono e descanso?",
         },
     ]
-
-    suggestion_columns = st.columns(3, gap="large")
+    suggestion_columns = st.columns(len(suggestions))
     for index, (column, suggestion) in enumerate(zip(suggestion_columns, suggestions)):
         with column:
-            st.markdown(
-                f"""
-                <div class="topic-card">
-                    <div class="topic-icon">{suggestion['icon']}</div>
-                    <h3>{suggestion['title']}</h3>
-                    <p>{suggestion['tip']}</p>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-            if st.button(
-                "Explorar assunto  →",
-                key=f"suggestion_{index}",
-                use_container_width=True,
+            with st.container(
+                height=300,
+                border=True,
+                vertical_alignment="distribute",
             ):
-                st.session_state.suggestion_prompt = suggestion["prompt"]
-                st.rerun()
+                st.markdown(f"### {suggestion['icon']} {suggestion['title']}")
+                st.write(suggestion["tip"])
+                if st.button(
+                    "Perguntar sobre isso",
+                    key=f"suggestion_{index}",
+                    use_container_width=True,
+                ):
+                    st.session_state.suggestion_prompt = suggestion["prompt"]
+                    st.rerun()
 
 
 def render_chat_message(message):
     """Usa a apresentação nativa de mensagens do Streamlit."""
-    avatar = "🙂" if message["role"] == "user" else "💙"
+    avatar = "🙂" if message["role"] == "user" else "🌿"
     with st.chat_message(message["role"], avatar=avatar):
         st.markdown(message["content"])
 
@@ -669,7 +384,7 @@ if prompt:
     save_current_conversation()
     render_chat_message(user_message)
 
-    with st.chat_message("assistant", avatar="💙"):
+    with st.chat_message("assistant", avatar="🌿"):
         with st.spinner("Preparando uma resposta..."):
             try:
                 answer = generate_response(prompt, ASSISTANT_INSTRUCTIONS)
